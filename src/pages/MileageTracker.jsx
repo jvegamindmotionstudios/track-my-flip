@@ -67,6 +67,7 @@ const MileageTracker = () => {
       XLSX.writeFile(workbook, "AutoMileageLog.xlsx");
    };
 
+   return (
      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
        
        {/* Hero Banner: Total Savings */}
