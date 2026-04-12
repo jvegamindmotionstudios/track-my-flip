@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Map as MapIcon, Crosshair, X, Store, Home } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { useAppContext } from '../context/AppContext';
 
@@ -8,6 +8,14 @@ import { useAppContext } from '../context/AppContext';
 function MapUpdater({ center }) {
   const map = useMap();
   map.setView(center, map.getZoom());
+  return null;
+}
+
+function MapInteractionListener({ onMoved }) {
+  useMapEvents({
+    dragend: (e) => onMoved(e.target.getCenter()),
+    zoomend: (e) => onMoved(e.target.getCenter())
+  });
   return null;
 }
 
@@ -97,6 +105,22 @@ export default function FindSales() {
   const [isLocating, setIsLocating] = useState(false);
   const [viewedStreet, setViewedStreet] = useState(null);
   const [activeSources, setActiveSources] = useState([...AVAILABLE_SOURCES]);
+  
+  const [showSearchHere, setShowSearchHere] = useState(false);
+  const [scrolledLocation, setScrolledLocation] = useState(null);
+
+  const handleMapMoved = (newCenter) => {
+      setScrolledLocation([newCenter.lat, newCenter.lng]);
+      setShowSearchHere(true);
+  };
+
+  const searchThisArea = async () => {
+      setShowSearchHere(false);
+      setIsLocating(true);
+      setCenter(scrolledLocation);
+      await executeLiveSearch(scrolledLocation[0], scrolledLocation[1]);
+      setIsLocating(false);
+  };
   
   const toggleSource = (source) => {
      setActiveSources(prev => {
@@ -317,9 +341,17 @@ export default function FindSales() {
         width: '100%', height: '350px', borderRadius: '16px', 
         overflow: 'hidden', marginBottom: '1rem', border: '1px solid var(--border-color)', position: 'relative'
       }}>
+        {showSearchHere && (
+             <div style={{ position: 'absolute', top: '15px', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, animation: 'fadeIn 0.2s ease-out' }}>
+                 <button onClick={searchThisArea} className="btn" style={{ background: '#fff', color: 'var(--accent-color)', borderRadius: '24px', padding: '0.5rem 1.5rem', fontWeight: 'bold', boxShadow: '0 4px 15px rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Search size={16} /> Search this area
+                 </button>
+             </div>
+        )}
         <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%', zIndex: 1 }} zoomControl={false}>
           <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
           <MapUpdater center={center} />
+          <MapInteractionListener onMoved={handleMapMoved} />
           <LiveLocationMarker />
           
           {sales.map((sale) => {
