@@ -10,6 +10,7 @@ import SettingsModal from './components/SettingsModal';
 import Auth from './pages/Auth';
 import Pricing from './pages/Pricing';
 import InstallPrompt from './components/InstallPrompt';
+import GlobalDrivePrompt from './components/GlobalDrivePrompt';
 import { AppProvider, useAppContext } from './context/AppContext';
 import { supabase, isSupabaseConfigured } from './config/supabaseClient';
 import { Settings, ShieldCheck, Car, FileText, AlertTriangle } from 'lucide-react';
@@ -100,6 +101,7 @@ function MainInterface({ session }) {
       
       <Navigation currentTab={currentTab} setCurrentTab={setCurrentTab} />
       <InstallPrompt />
+      <GlobalDrivePrompt />
 
       {/* Global Initial Terms of Service Modal */}
       {showToS && (

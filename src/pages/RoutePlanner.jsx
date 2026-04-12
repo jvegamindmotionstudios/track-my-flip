@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Navigation, Clock, Plus, X, Crosshair, Car, FileSpreadsheet } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useAppContext } from '../context/AppContext';
@@ -48,6 +48,20 @@ function LiveLocationMarker() {
           </Popup>
       </Marker>
   );
+}
+
+function MapRouteUpdater({ stops }) {
+  const map = useMap();
+  useEffect(() => {
+    if (stops && stops.length > 0) {
+      const bounds = L.latLngBounds(stops.map(s => [s.lat, s.lng]));
+      // Add a slight delay to ensure Leaflet container is fully loaded
+      setTimeout(() => {
+          map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+      }, 100);
+    }
+  }, [stops, map]);
+  return null;
 }
 
 const createCustomIcon = (index) => {
@@ -300,6 +314,7 @@ export default function RoutePlanner() {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
           />
+          <MapRouteUpdater stops={activeStops.length > 0 ? activeStops : stops} />
           <LiveLocationMarker />
           {stops.map((stop, i) => (
             <Marker key={stop.id} position={[stop.lat, stop.lng]} icon={createCustomIcon(i + 1)}>
