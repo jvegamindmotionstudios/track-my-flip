@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Map as MapIcon, Crosshair, X, Store, Home } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents, ZoomControl } from 'react-leaflet';
 import L from 'leaflet';
 import { useAppContext } from '../context/AppContext';
 
@@ -350,6 +350,7 @@ export default function FindSales() {
         )}
         <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%', zIndex: 1 }} zoomControl={false}>
           <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
+          <ZoomControl position="bottomright" />
           <MapUpdater center={center} />
           <MapInteractionListener onMoved={handleMapMoved} />
           <LiveLocationMarker />
