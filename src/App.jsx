@@ -19,8 +19,9 @@ function MainInterface({ session }) {
   const [showSettings, setShowSettings] = useState(false);
   const [showToS, setShowToS] = useState(false);
   const [hasAgreedToS, setHasAgreedToS] = useState(false);
+  const [showPricing, setShowPricing] = useState(false);
   
-  const { isPro } = useAppContext();
+  const { isPro, isTrialing, trialDaysLeft } = useAppContext();
 
   useEffect(() => {
     const accepted = localStorage.getItem('trackMyFlip_termsAccepted');
@@ -41,8 +42,13 @@ function MainInterface({ session }) {
   };
 
   const renderContent = () => {
-    // Pro Paywall Blocks
-    if (!isPro && (currentTab === 'route' || currentTab === 'price')) {
+    // Explicit Upgrade Modal Trigger
+    if (showPricing) {
+       return <Pricing onClose={() => setShowPricing(false)} onSubscribeClick={handleSubscribe} />;
+    }
+
+    // Pro Paywall Blocks (AI Price Estimator is hardblocked post-trial)
+    if (!isPro && !isTrialing && currentTab === 'price') {
       return <Pricing onClose={() => setCurrentTab('find')} onSubscribeClick={handleSubscribe} />;
     }
 
@@ -73,8 +79,12 @@ function MainInterface({ session }) {
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500, letterSpacing: '0.5px', textTransform: 'uppercase' }}>Route to Profit</span>
           </div>
         </div>
-        
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          {!isPro && (
+             <button onClick={() => setShowPricing(true)} style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)', color: 'white', padding: '0.4rem 0.75rem', borderRadius: '16px', fontSize: '0.75rem', fontWeight: 800, border: 'none', cursor: 'pointer', boxShadow: '0 2px 4px rgba(245, 158, 11, 0.4)' }}>
+                {isTrialing ? `TRIAL: ${trialDaysLeft} DAYS` : 'UPGRADE PRO'}
+             </button>
+          )}
           <div style={{ background: 'rgba(0,0,0,0.03)', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.8rem', color: 'var(--text-primary)', fontWeight: 600 }}>
             {currentDate}
           </div>

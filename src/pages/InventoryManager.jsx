@@ -4,7 +4,7 @@ import Tesseract from 'tesseract.js';
 import { useAppContext } from '../context/AppContext';
 
 export default function InventoryManager() {
-  const { inventory, addInventoryItem, updateInventoryItem, budget, spent, revenue, fees, setBudget } = useAppContext();
+  const { isPro, isTrialing, inventory, addInventoryItem, updateInventoryItem, budget, spent, revenue, fees, setBudget } = useAppContext();
   const [isAdding, setIsAdding] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [flashActive, setFlashActive] = useState(false);
@@ -22,6 +22,14 @@ export default function InventoryManager() {
   const [cat, setCat] = useState('');
   const [imgUrls, setImgUrls] = useState([]);
   const [paymentMode, setPaymentMode] = useState('Cash');
+
+  const exportCSV = () => {
+    if (!isPro && !isTrialing) {
+        alert('Trial Ended: Exporting inventory reports is a Premium feature. Upgrade to Pro in the top-right menu to unlock spreadsheet exports!');
+        return;
+    }
+    const headers = ['Item Name', 'Purchased For', 'Status'];
+  };
 
   // Example placeholders to simulate what the camera "sees"
   const mockCameraFeeds = [

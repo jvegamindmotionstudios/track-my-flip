@@ -88,7 +88,7 @@ export default function RoutePlanner() {
   const [lng, setLng] = useState(null);
   const [isLocating, setIsLocating] = useState(false);
 
-  const handleAddStop = (e) => {
+  const handleAddStop = async (e) => {
     e.preventDefault();
     if (!address) return;
     
@@ -96,12 +96,17 @@ export default function RoutePlanner() {
     if (stateCode) fullAddress += `, ${stateCode}`;
     if (zipCode) fullAddress += ` ${zipCode}`;
     
-    addStop({
+    const result = await addStop({
       address: fullAddress,
       items: items || 'Unknown Items',
       lat: lat || undefined,
       lng: lng || undefined
     });
+    
+    if (result && !result.success && result.reason === 'limit') {
+        alert('Trial Ended: You can only map 2 stops per day on the free tier. Upgrade to Pro in the top-right to unlock unlimited routing!');
+        return;
+    }
     
     setAddress('');
     setStateCode('');

@@ -27,7 +27,7 @@ const MapBounds = ({ path }) => {
 };
 
 const MileageTracker = () => {
-   const { isDriveTracking, setIsDriveTracking, trackedDrives, classifyDrive, setTrackedDrives, activeDrive } = useAppContext();
+   const { isPro, isTrialing, isDriveTracking, setIsDriveTracking, trackedDrives, classifyDrive, setTrackedDrives, activeDrive } = useAppContext();
    const [viewingMapPath, setViewingMapPath] = useState(null);
 
    const toggleTracking = () => {
@@ -59,6 +59,10 @@ const MileageTracker = () => {
    };
 
    const exportLog = () => {
+      if (!isPro && !isTrialing) {
+          alert('Trial Ended: Exporting tax reports is a Premium feature. Upgrade to Pro in the top-right menu to unlock exports!');
+          return;
+      }
       if (trackedDrives.length === 0) return alert("No drives to export!");
       const worksheet = XLSX.utils.json_to_sheet(trackedDrives.map(d => ({
          "Date": new Date(d.startTime).toLocaleDateString(),

@@ -223,13 +223,18 @@ export default function FindSales() {
     }
   };
 
-  const handleAddStop = (sale, priority) => {
-    addStop({
+  const handleAddStop = async (sale, priority) => {
+    const result = await addStop({
         address: sale.address,
         items: sale.items,
         lat: sale.lat,
         lng: sale.lng
     }, priority);
+    
+    if (result && !result.success && result.reason === 'limit') {
+        alert('Trial Ended: You can only map 2 stops per day on the free tier. Upgrade to Pro in the top-right to unlock unlimited routing!');
+        return;
+    }
     
     // Visually remove routed items from map
     setSales(sales.filter(s => s.id !== sale.id));

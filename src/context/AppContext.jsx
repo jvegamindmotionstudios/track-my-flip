@@ -36,6 +36,10 @@ export const AppProvider = ({ children }) => {
   const [isDriveTracking, setIsDriveTracking] = useState(false);
   const [activeDrive, setActiveDrive] = useState(null);
 
+  // Trial Enforcements
+  const [isTrialing, setIsTrialing] = useState(false);
+  const [trialDaysLeft, setTrialDaysLeft] = useState(0);
+
   // 1. Fetch Auth & Cloud Data on Mount
   useEffect(() => {
     const fetchUserAndData = async () => {
@@ -44,6 +48,14 @@ export const AppProvider = ({ children }) => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setUser(session.user);
+        
+        // Trial calculation
+        const createdAt = new Date(session.user.created_at).getTime();
+        const now = Date.now();
+        const daysActive = Math.floor((now - createdAt) / (1000 * 60 * 60 * 24));
+        const remainingTrialDays = 7 - daysActive;
+        // Don't set state yet until we know if they are Pro, but initialize the values
+        let trialActive = remainingTrialDays > 0;
         
         // Fetch inventory
         const { data: invData, error: err1 } = await supabase
@@ -92,13 +104,21 @@ export const AppProvider = ({ children }) => {
           .single();
           
         if (profileData) {
-          setIsPro(profileData.is_pro === true);
+          const isUserPro = profileData.is_pro === true;
+          setIsPro(isUserPro);
+          setIsTrialing(!isUserPro && trialActive);
+          setTrialDaysLeft(trialActive ? remainingTrialDays : 0);
+          
           setUserProfile({
             companyName: profileData.company_name || '',
             address: profileData.address || '',
             phone: profileData.phone || '',
             email: profileData.email || ''
           });
+        } else {
+          setIsPro(false);
+          setIsTrialing(trialActive);
+          setTrialDaysLeft(trialActive ? remainingTrialDays : 0);
         }
 
       }
@@ -270,38 +290,28 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  const addStop = async (stopDetail, priority = 'standard') => {
-    const lat = stopDetail.lat || (40.7128 + (Math.random() - 0.5) * 0.05);
-    const lng = stopDetail.lng || (-74.0060 + (Math.random() - 0.5) * 0.05);
-    const now = new Date();
-    const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const id = Date.now();
-
-    const newStop = {
-      id,
-      time: timeString,
-      lat,
-      lng,
-      status: 'pending',
-      priority,
-      ...stopDetail,
-    };
-    
-    setStops(prev => [newStop, ...prev]);
-
-    if (user && isSupabaseConfigured) {
-       await supabase.from('stops').insert([{
-           id,
-           user_id: user.id,
-           time: timeString,
-           lat,
-           lng,
-           title: stopDetail.title || '',
-           notes: stopDetail.address || '',
-           status: 'pending',
-           priority
-       }]);
+  const addStop = async (stop, priority = 'standard') => {
+    if (!isPro && !isTrialing && stops.filter(s => s.status === 'pending' || !s.status).length >= 2) {
+       return { success: false, reason: 'limit' };
     }
+
+    const stopPayload = { ...stop, status: 'pending', priority, timestamp: Date.now() };
+    const { data, error } = await supabase.from('stops').insert([{
+      user_id: user.id,
+      address: stop.address,
+      items: stop.items,
+      lat: stop.lat,
+      lng: stop.lng,
+      status: 'pending',
+      priority: priority,
+      time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+    }]).select().single();
+
+    if (data && !error) {
+       setStops(prev => [data, ...prev]);
+       return { success: true };
+    }
+    return { success: false, reason: 'error' };
   };
 
   const updateStopStatus = async (id, newStatus) => {
@@ -344,7 +354,8 @@ export const AppProvider = ({ children }) => {
       classifyDrive,
       resetDay,
       userProfile, setUserProfile,
-      isPro, setIsPro
+      isPro, setIsPro,
+      isTrialing, trialDaysLeft
     }}>
       {children}
     </AppContext.Provider>
