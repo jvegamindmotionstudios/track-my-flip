@@ -142,7 +142,7 @@ export default function FindSales() {
 
   const generateAlgorithmSales = (lat, lng) => {
       // Determines whether the user selected popup sales
-      const validTypes = activeSources.filter(s => s === 'Yard Sale' || s === 'Estate Sale');
+      const validTypes = activeSources.filter(s => s === 'Yard Sales' || s === 'Estate Sales');
       if (validTypes.length === 0) return [];
 
       const mockData = [];
@@ -160,7 +160,7 @@ export default function FindSales() {
               id: `algo-${Date.now()}-${i}`,
               lat: lat + distLat,
               lng: lng + distLng,
-              type: randType,
+              type: randType === 'Yard Sales' ? 'Yard Sale' : 'Estate Sale',
               address: descPool[Math.floor(Math.random() * descPool.length)],
               items: itemPool[Math.floor(Math.random() * itemPool.length)],
               time: 'Sat 8:00 AM - 1:00 PM',
@@ -234,7 +234,11 @@ export default function FindSales() {
     // Visually remove routed items from map
     setSales(sales.filter(s => s.id !== sale.id));
   };
-
+  
+  const useCurrentLocation = () => {
+    setLocationQuery('');
+    setTimeout(() => scanArea(), 50);
+  };
 
   return (
     <div style={{ paddingBottom: '1rem' }}>
@@ -294,9 +298,14 @@ export default function FindSales() {
             </button>
           ))}
         </div>
-        <button onClick={scanArea} className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }}>
-            {isLocating ? 'Scanning Regions...' : 'Scan Map'}
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+          <button onClick={useCurrentLocation} className="btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+             <Crosshair size={18} style={{marginRight: '6px'}} /> Find My Location
+          </button>
+          <button onClick={scanArea} className="btn btn-primary" style={{ flex: 2 }}>
+              {isLocating ? 'Scanning Regions...' : 'Scan Map'}
+          </button>
+        </div>
       </div>
 
       <div style={{ 
