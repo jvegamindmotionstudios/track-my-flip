@@ -1,9 +1,54 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MapPin, Navigation, Clock, Plus, X, Crosshair, Car, FileSpreadsheet } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useAppContext } from '../context/AppContext';
+
+const wazeLocationIcon = L.divIcon({
+  className: 'custom-user-location-icon',
+  html: `<div style="
+    width: 24px;
+    height: 24px;
+    background-color: #3b82f6; 
+    border-radius: 50%;
+    border: 3px solid white;
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.6), inset 0 0 5px rgba(255,255,255,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  ">
+    <div style="width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 10px solid white; transform: translateY(-2px);"></div>
+  </div>`,
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+  popupAnchor: [0, -12]
+});
+
+function LiveLocationMarker() {
+  const [position, setPosition] = useState(null);
+  
+  useEffect(() => {
+      let watchId;
+      if ('geolocation' in navigator) {
+          watchId = navigator.geolocation.watchPosition((pos) => {
+              setPosition([pos.coords.latitude, pos.coords.longitude]);
+          }, null, { enableHighAccuracy: true });
+      }
+      return () => {
+          if (watchId) navigator.geolocation.clearWatch(watchId);
+      };
+  }, []);
+
+  return position === null ? null : (
+      <Marker position={position} icon={wazeLocationIcon} zIndexOffset={1000}>
+          <Popup className="dark-popup">
+              <div style={{ fontWeight: 'bold' }}>You are here</div>
+          </Popup>
+      </Marker>
+  );
+}
 
 const createCustomIcon = (index) => {
   return L.divIcon({
@@ -248,8 +293,9 @@ export default function RoutePlanner() {
         >
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
           />
+          <LiveLocationMarker />
           {stops.map((stop, i) => (
             <Marker key={stop.id} position={[stop.lat, stop.lng]} icon={createCustomIcon(i + 1)}>
               <Popup className="dark-popup">
