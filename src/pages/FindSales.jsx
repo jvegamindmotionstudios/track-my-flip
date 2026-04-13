@@ -7,7 +7,9 @@ import { useAppContext } from '../context/AppContext';
 // Simple component to update map center dynamically
 function MapUpdater({ center }) {
   const map = useMap();
-  map.setView(center, map.getZoom());
+  useEffect(() => {
+    map.setView(center, map.getZoom());
+  }, [center, map]);
   return null;
 }
 
@@ -408,11 +410,13 @@ export default function FindSales() {
       </div>
 
       {viewedStreet && (
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', animation: 'fadeIn 0.2s ease-out' }}>
-              <div className="card glass" style={{ width: '100%', height: '50%', display: 'flex', flexDirection: 'column', padding: '1rem' }}>
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', animation: 'fadeIn 0.2s ease-out' }} onClick={() => setViewedStreet(null)}>
+              <div className="card glass" style={{ width: '100%', height: '50%', display: 'flex', flexDirection: 'column', padding: '1rem', background: 'var(--bg-card)', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
                   <div className="flex-between" style={{ marginBottom: '1rem' }}>
-                      <h3 style={{ margin: 0 }}>Street View Glance</h3>
-                      <button onClick={() => setViewedStreet(null)} style={{ background: 'none', border: 'none', color: 'var(--text-inverse)', cursor: 'pointer' }}><X size={24} /></button>
+                      <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>Street View Glance</h3>
+                      <button onClick={() => setViewedStreet(null)} style={{ background: 'rgba(0,0,0,0.1)', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', padding: '0.4rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <X size={24} />
+                      </button>
                   </div>
                   {/* Notice: A real API key would replace this mock static visual */}
                   <div style={{ flex: 1, backgroundImage: 'url(https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=600&q=80)', backgroundSize: 'cover', backgroundPosition: 'center', borderRadius: '8px' }}>
