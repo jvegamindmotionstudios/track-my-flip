@@ -1,13 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Camera, Package, Plus, X, Maximize, ArrowUp, ArrowDown, Receipt } from 'lucide-react';
 import Tesseract from 'tesseract.js';
 import { useAppContext } from '../context/AppContext';
 
 export default function InventoryManager() {
-  const { isPro, isTrialing, inventory, addInventoryItem, updateInventoryItem, budget, spent, revenue, fees, setBudget } = useAppContext();
+  const { isPro, isTrialing, inventory, addInventoryItem, updateInventoryItem, stops } = useAppContext();
   const [isAdding, setIsAdding] = useState(false);
-  const [isCameraActive, setIsCameraActive] = useState(false);
-  const [flashActive, setFlashActive] = useState(false);
   const [activeItem, setActiveItem] = useState(null);
   const [soldPrice, setSoldPrice] = useState('');
   const [platformFees, setPlatformFees] = useState('');
@@ -16,50 +14,79 @@ export default function InventoryManager() {
   const [isScanningReceipt, setIsScanningReceipt] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
   
+  // Refs for reliable file input triggering
+  const gridCameraRef = useRef(null);
+  const formCameraRef = useRef(null);
+  const receiptRef = useRef(null);
+  
   // Form State
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [cat, setCat] = useState('');
   const [imgUrls, setImgUrls] = useState([]);
   const [paymentMode, setPaymentMode] = useState('Cash');
+  const [sourcedStop, setSourcedStop] = useState('');
 
   const exportCSV = () => {
     if (!isPro && !isTrialing) {
         alert('Trial Ended: Exporting inventory reports is a Premium feature. Upgrade to Pro in the top-right menu to unlock spreadsheet exports!');
         return;
     }
-    const headers = ['Item Name', 'Purchased For', 'Status'];
+    if (inventory.length === 0) return alert("No inventory items to export.");
+
+    const worksheet = XLSX.utils.json_to_sheet(inventory.map(item => {
+        let stopLocation = 'Manual Entry';
+        let cleanName = item.name;
+        
+        // Extract the bracketed Stop Name if it exists
+        const match = item.name.match(/^\[(.*?)\]\s*(.*)$/);
+        if (match) {
+            stopLocation = match[1];
+            cleanName = match[2];
+        }
+
+        return {
+           "Purchased At": stopLocation,
+           "Item Name": cleanName,
+           "Purchase Price ($)": Number(item.price).toFixed(2),
+           "Category": item.cat || 'Misc',
+           "Payment Method": item.paymentMode || 'Cash',
+           "Status": item.status.toUpperCase(),
+           "Sold Price ($)": item.soldPrice ? Number(item.soldPrice).toFixed(2) : '',
+           "Platform Fees ($)": item.platformFees ? Number(item.platformFees).toFixed(2) : '',
+           "Net Profit ($)": (item.soldPrice) ? (Number(item.soldPrice) - Number(item.price) - Number(item.platformFees || 0)).toFixed(2) : ''
+        };
+    }));
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Inventory Haul Report");
+    XLSX.writeFile(workbook, "TrackMyFlip_Inventory_Log.xlsx");
   };
 
-  // Example placeholders to simulate what the camera "sees"
-  const mockCameraFeeds = [
-    'https://images.unsplash.com/photo-1549646452-fddfa31ec2af?w=400&q=80', // vintage camera
-    'https://images.unsplash.com/photo-1594957367852-aa006fc519bf?w=400&q=80', // clock
-    'https://images.unsplash.com/photo-1582216654228-56920efec569?w=400&q=80' // typewriter
-  ];
-  
-  const [currentFeed, setCurrentFeed] = useState(mockCameraFeeds[0]);
-
-  const openCamera = () => {
-    setCurrentFeed(mockCameraFeeds[Math.floor(Math.random() * mockCameraFeeds.length)]);
-    setIsCameraActive(true);
-  };
-
-  const handleCapture = () => {
-    setFlashActive(true);
-    setTimeout(() => {
-      setFlashActive(false);
-      setImgUrls(prev => [...prev, currentFeed]);
-      setCurrentFeed(mockCameraFeeds[Math.floor(Math.random() * mockCameraFeeds.length)]);
-    }, 400); // Wait for flash
+  const handleNativeCamera = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+          setImgUrls(prev => [...prev, event.target.result]);
+          setIsAdding(true);
+      };
+      reader.readAsDataURL(file);
+      
+      // Reset input so they can take another
+      e.target.value = '';
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!name || !price) return;
     
+    // Embed the Source Location cleanly into the database string
+    const finalName = sourcedStop ? `[${sourcedStop}] ${name}` : name;
+
     addInventoryItem({
-      name,
+      name: finalName,
       price: parseFloat(price) || 0,
       cat: cat || 'Misc',
       imageUrls: imgUrls,
@@ -71,6 +98,7 @@ export default function InventoryManager() {
     setCat('');
     setImgUrls([]);
     setPaymentMode('Cash');
+    setSourcedStop('');
     setIsAdding(false);
   };
 
@@ -120,55 +148,10 @@ export default function InventoryManager() {
     }
     
     setIsScanningReceipt(false);
-    e.target.value = null; // reset input
+    e.target.value = ''; // reset input
   };
 
-  // --- CAMERA VIEW ---
-  if (isCameraActive) {
-    return (
-      <div style={{
-        position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-        background: '#000', zIndex: 9999, display: 'flex', flexDirection: 'column'
-      }}>
-        {flashActive && (
-          <div style={{ position: 'absolute', inset: 0, background: '#fff', zIndex: 10, animation: 'fadeOut 0.4s ease-out forwards' }} />
-        )}
-        <div style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', zIndex: 5 }}>
-          <button className="btn" style={{ background: 'rgba(0,0,0,0.5)', border: 'none' }} onClick={() => setIsCameraActive(false)}>
-            <X size={24} color="#fff" />
-          </button>
-        </div>
-        
-        <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <img src={currentFeed} alt="Camera Feed" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.8 }} />
-          <div style={{ position: 'absolute', border: '2px solid rgba(255,255,255,0.4)', width: '80%', height: '50%', borderRadius: '16px' }}>
-             <Maximize size={48} color="rgba(0,0,0,0.12)" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
-          </div>
-        </div>
 
-        <div style={{ height: '120px', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'space-around', paddingBottom: 'env(safe-area-inset-bottom)' }}>
-          <div style={{ width: '60px' }}></div>
-          <button onClick={handleCapture} style={{
-            width: '70px', height: '70px', borderRadius: '50%', border: '4px solid #fff',
-            background: 'rgba(0,0,0,0.12)', cursor: 'pointer', transition: 'all 0.2s',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>
-            <div style={{ width: '54px', height: '54px', borderRadius: '50%', background: '#fff' }} />
-          </button>
-          <button onClick={() => { setIsCameraActive(false); setIsAdding(true); }} className="text-secondary" style={{ width: '60px', background: 'none', border: 'none', outline: 'none' }}>
-            Done {imgUrls.length > 0 ? `(${imgUrls.length})` : ''}
-          </button>
-        </div>
-
-        <style>{`
-          @keyframes fadeOut {
-            from { opacity: 1; }
-            to { opacity: 0; }
-          }
-        `}</style>
-      </div>
-    );
-  }
 
   // --- ADD FORM VIEW ---
   if (isAdding) {
@@ -186,20 +169,35 @@ export default function InventoryManager() {
 
         <form onSubmit={handleSubmit} className="card glass">
           
-          <input type="file" id="receipt-upload" accept="image/*" capture="environment" style={{display: 'none'}} onChange={handleReceiptScan} />
-          <button 
-             type="button" 
-             className="btn" 
-             onClick={() => document.getElementById('receipt-upload').click()} 
-             disabled={isScanningReceipt}
-             style={{ 
-                 width: '100%', marginBottom: '1.5rem', padding: '0.75rem', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.3)',
-                 background: 'rgba(16, 185, 129, 0.05)', color: 'var(--success-color)', display: 'flex', justifyContent: 'center', gap: '0.5rem', fontWeight: 600, transition: 'all 0.2s'
-             }}
-          >
-             <Receipt size={20} /> 
-             {isScanningReceipt ? `Analyzing Receipt... (${scanProgress}%)` : 'Scan Receipt (Auto-Extract Total)'}
-          </button>
+          <input type="file" ref={formCameraRef} accept="image/*" capture="environment" style={{display: 'none'}} onChange={handleNativeCamera} />
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
+              <button 
+                 type="button" 
+                 className="btn" 
+                 onClick={() => formCameraRef.current.click()} 
+                 style={{ 
+                     flex: 1, padding: '0.75rem', borderRadius: '12px', border: '1px solid rgba(59, 130, 246, 0.3)',
+                     background: 'rgba(59, 130, 246, 0.05)', color: '#3b82f6', display: 'flex', justifyContent: 'center', gap: '0.5rem', fontWeight: 600, transition: 'all 0.2s'
+                 }}
+              >
+                 <Camera size={20} /> native snap
+              </button>
+
+              <input type="file" ref={receiptRef} accept="image/*" capture="environment" style={{display: 'none'}} onChange={handleReceiptScan} />
+              <button 
+                 type="button" 
+                 className="btn" 
+                 onClick={() => receiptRef.current.click()} 
+                 disabled={isScanningReceipt}
+                 style={{ 
+                     flex: 1, padding: '0.75rem', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.3)',
+                     background: 'rgba(16, 185, 129, 0.05)', color: 'var(--success-color)', display: 'flex', justifyContent: 'center', gap: '0.5rem', fontWeight: 600, transition: 'all 0.2s'
+                 }}
+              >
+                 <Receipt size={20} /> 
+                 {isScanningReceipt ? 'Scanning...' : 'OCR Receipt'}
+              </button>
+          </div>
           {imgUrls.length > 0 && (
             <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', marginBottom: '1.5rem', paddingBottom: '0.5rem' }}>
               {imgUrls.map((url, idx) => (
@@ -260,6 +258,22 @@ export default function InventoryManager() {
               <option value="Trade" style={{ color: 'var(--text-primary)' }}>Trade / Barter</option>
             </select>
           </div>
+
+          <div className="input-group">
+            <label className="input-label">Sourced Location (Optional)</label>
+            <select 
+              className="input-field" 
+              value={sourcedStop}
+              onChange={(e) => setSourcedStop(e.target.value)}
+              style={{ appearance: 'auto', background: 'rgba(0,0,0,0.03)', color: 'var(--text-primary)' }}
+            >
+              <option value="" style={{ color: 'var(--text-primary)' }}>Select a planned stop...</option>
+              {stops && stops.filter(s => s.address).map(stop => (
+                 <option key={stop.id} value={stop.address} style={{ color: 'var(--text-primary)' }}>{stop.address}</option>
+              ))}
+            </select>
+          </div>
+
           <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }}>
             <Plus size={18} /> Save Item
           </button>
@@ -338,7 +352,9 @@ export default function InventoryManager() {
           <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Inventory Hub</h2>
           <p style={{ margin: 0, fontSize: '0.875rem' }}>Your active hauls ({inventory.length})</p>
         </div>
-        <button className="btn btn-primary" onClick={openCamera} style={{ padding: '0.5rem', borderRadius: '50%', boxShadow: '0 4px 14px var(--accent-glow)' }}>
+        
+        <input type="file" ref={gridCameraRef} accept="image/*" capture="environment" style={{display: 'none'}} onChange={handleNativeCamera} />
+        <button className="btn btn-primary" onClick={() => gridCameraRef.current.click()} style={{ padding: '0.5rem', borderRadius: '50%', boxShadow: '0 4px 14px var(--accent-glow)' }}>
           <Camera size={24} />
         </button>
       </div>

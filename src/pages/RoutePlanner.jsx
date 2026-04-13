@@ -87,7 +87,7 @@ const createCustomIcon = (index) => {
 };
 
 export default function RoutePlanner() {
-  const { stops, addStop, updateStopStatus, budget, spent, mileage, setMileage, startOdo, setStartOdo, endOdo, setEndOdo } = useAppContext();
+  const { stops, addStop, updateStopStatus, budget, spent, mileage, setMileage, startOdo, setStartOdo, endOdo, setEndOdo, clearRoute } = useAppContext();
   const activeStops = stops
       .filter(s => !s.status || s.status === 'pending')
       .sort((a,b) => (a.priority === 'high' ? -1 : 1));
@@ -285,13 +285,16 @@ export default function RoutePlanner() {
 
   return (
     <div style={{ paddingBottom: '1rem' }}>
-      <div className="flex-between" style={{ marginBottom: '1rem' }}>
+      <div className="flex-between" style={{ marginBottom: '1rem', alignItems: 'center' }}>
         <div>
-          <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
             Route Planner <MapPin size={24} className="text-accent" />
           </h1>
-          <p>Optimize your treasure hunt</p>
+          <p style={{ margin: 0, marginTop: '0.25rem' }}>Optimize your treasure hunt</p>
         </div>
+        <button className="btn" onClick={clearRoute} style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
+          Reset Route
+        </button>
       </div>
 
       <div style={{ 

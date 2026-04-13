@@ -106,14 +106,14 @@ const Pricing = ({ onClose, onSubscribeClick }) => {
           
           <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: '0.5rem' }}>
              <span style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-               {billingCycle === 'monthly' ? '$9.99' : '$79.00'}
+               {billingCycle === 'monthly' ? '$8.99' : '$59.99'}
              </span>
              <span style={{ color: 'var(--text-secondary)', marginLeft: '0.25rem', fontWeight: 500 }}>
                /{billingCycle === 'monthly' ? 'mo' : 'yr'}
              </span>
           </div>
           <p style={{ margin: '0 0 2rem 0', fontSize: '0.85rem', color: '#3f9b0b', fontWeight: 600 }}>
-             {billingCycle === 'yearly' ? 'Billed annually ($6.58/mo equivalent)' : 'Billed monthly, cancel anytime'}
+             {billingCycle === 'yearly' ? 'Billed annually ($4.99/mo equivalent)' : 'Billed monthly, cancel anytime'}
           </p>
           
           <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 2rem 0', flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>

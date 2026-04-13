@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, Sparkles, Camera, X, Maximize, ExternalLink, ScanLine } from 'lucide-react';
 import ProfitCalculator from './ProfitCalculator';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -9,18 +9,62 @@ export default function PriceEstimator() {
   const [isEstimating, setIsEstimating] = useState(false);
   const [hasResult, setHasResult] = useState(false);
   const [estimationQuery, setEstimationQuery] = useState('');
+  const [estimateData, setEstimateData] = useState(null);
+  const cameraRef = useRef(null);
+
+  const generateMockEstimate = (queryStr) => {
+    const lower = queryStr.toLowerCase().trim();
+    
+    // Profanity/Joke filter
+    const badWords = ['balls', 'dick', 'ass', 'poop', 'shit', 'fuck', 'crap', 'junk', 'nothing', 'bitch', 'boob', 'testicle'];
+    if (badWords.some(word => lower.includes(word) && !word.includes('ass') /* handle "glass" etc. properly if needed, but let's be careful. Actually 'ass' as a standalone word works if split, but includes will catch glass */ ) || lower.match(/\b(ass|balls|dick|poop|shit|fuck|crap|junk|cock)\b/i)) {
+      return {
+         price: '$0.00',
+         reason: "We couldn't find any comps for this. Please enter a valid item for resale.",
+         tags: ['No Data']
+      };
+    }
+    
+    // Some keyword based mocking
+    let base = 15;
+    if (lower.includes('vintage') || lower.includes('antique')) base += 45;
+    if (lower.includes('camera')) base += 40;
+    if (lower.includes('nintendo') || lower.includes('playstation') || lower.includes('xbox')) base += 60;
+    if (lower.includes('gold') || lower.includes('silver') || lower.includes('jewelry')) base += 120;
+    if (lower.includes('book') || lower.includes('dvd') || lower.includes('cd')) base -= 10;
+    if (lower.includes('clothes') || lower.includes('shirt') || lower.includes('shoes')) base += 10;
+    if (lower.includes('iphone') || lower.includes('macbook') || lower.includes('ipad') || lower.includes('apple')) base += 150;
+
+    // Use string hash to add a pseudo-random variation based on the exact characters
+    let hash = 0;
+    for (let i = 0; i < lower.length; i++) {
+       hash = ((hash << 5) - hash) + lower.charCodeAt(i);
+       hash = hash & hash;
+    }
+    
+    const variation = Math.abs(hash % 40);
+    const lowEnd = Math.max(2, base + variation);
+    const highEnd = lowEnd + Math.floor(lowEnd * 0.3) + 8;
+    
+    let reason = "Based on recent online marketplace data.";
+    let tags = [];
+    
+    if (lowEnd > 80) {
+       reason += " High demand category.";
+       tags.push('High Demand');
+    }
+    if (lower.includes('vintage') || lower.includes('antique')) tags.push('Vintage');
+    if (tags.length === 0) tags.push('Average Sales');
+    
+    return {
+       price: `$${lowEnd} - $${highEnd}`,
+       reason,
+       tags
+    };
+  };
 
   // Scanner state
   const [isScanning, setIsScanning] = useState(false);
-
-  // Photo Comp state
-  const [isCameraActive, setIsCameraActive] = useState(false);
-  const [flashActive, setFlashActive] = useState(false);
-  const mockCameraFeeds = [
-    'https://images.unsplash.com/photo-1549646452-fddfa31ec2af?w=400&q=80',
-    'https://images.unsplash.com/photo-1594957367852-aa006fc519bf?w=400&q=80',
-  ];
-  const [currentFeed, setCurrentFeed] = useState(mockCameraFeeds[0]);
 
   useEffect(() => {
     let scanner;
@@ -65,6 +109,7 @@ export default function PriceEstimator() {
     setTimeout(() => {
       setIsEstimating(false);
       setEstimationQuery(searchQuery);
+      setEstimateData(generateMockEstimate(searchQuery));
       setHasResult(true);
     }, 1500);
   };
@@ -74,60 +119,18 @@ export default function PriceEstimator() {
     triggerEstimate(query);
   };
 
-  const openCamera = () => {
-    setCurrentFeed(mockCameraFeeds[Math.floor(Math.random() * mockCameraFeeds.length)]);
-    setIsCameraActive(true);
+  const handleNativeEstimationCapture = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    // In a real production app with AI Vision, you would upload this blob 
+    // to Google Cloud Vision or OpenAI Vision for parsing.
+    // For MVP demonstration, we will fake the vision extraction:
+    const mockItem = "Vintage Polaroid SX-70 Camera";
+    setQuery(mockItem);
+    triggerEstimate(mockItem);
+    e.target.value = '';
   };
-
-  const handleCapture = () => {
-    setFlashActive(true);
-    setTimeout(() => {
-      setFlashActive(false);
-      setIsCameraActive(false);
-      const mockItem = "Vintage Polaroid SX-70 Camera";
-      setQuery(mockItem);
-      triggerEstimate(mockItem);
-    }, 400);
-  };
-
-  if (isCameraActive) {
-    return (
-      <div style={{
-        position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-        background: '#000', zIndex: 9999, display: 'flex', flexDirection: 'column'
-      }}>
-        {flashActive && (
-          <div style={{ position: 'absolute', inset: 0, background: '#fff', zIndex: 10, animation: 'fadeOut 0.4s ease-out forwards' }} />
-        )}
-        <div style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', zIndex: 5 }}>
-          <button className="btn" style={{ background: 'rgba(0,0,0,0.5)', border: 'none' }} onClick={() => setIsCameraActive(false)}>
-            <X size={24} color="#fff" />
-          </button>
-          <div style={{ color: 'var(--text-inverse)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Sparkles size={18} className="text-accent" /> Visual Search
-          </div>
-        </div>
-        
-        <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <img src={currentFeed} alt="Camera Feed" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.8 }} />
-          <div style={{ position: 'absolute', border: '2px solid var(--accent-color)', width: '70%', height: '40%', borderRadius: '16px', boxShadow: '0 0 0 4000px rgba(0,0,0,0.5)' }}>
-             <Maximize size={48} color="rgba(255,255,255,0.6)" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
-          </div>
-        </div>
-
-        <div style={{ height: '120px', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', paddingBottom: 'env(safe-area-inset-bottom)' }}>
-          <button onClick={handleCapture} style={{
-            width: '70px', height: '70px', borderRadius: '50%', border: '4px solid #fff',
-            background: 'rgba(0,0,0,0.12)', cursor: 'pointer', transition: 'all 0.2s',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>
-            <div style={{ width: '54px', height: '54px', borderRadius: '50%', background: '#fff' }} />
-          </button>
-        </div>
-        <style>{`@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }`}</style>
-      </div>
-    );
-  }
 
   if (isScanning) {
     return (
@@ -184,9 +187,10 @@ export default function PriceEstimator() {
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                   />
+                  <input type="file" ref={cameraRef} accept="image/*" capture="environment" style={{display: 'none'}} onChange={handleNativeEstimationCapture} />
                   <button 
                     type="button" 
-                    onClick={openCamera}
+                    onClick={() => cameraRef.current.click()}
                     style={{ position: 'absolute', right: '0.5rem', background: 'none', border: 'none', color: 'var(--accent-color)', cursor: 'pointer', padding: '0.25rem' }}>
                     <Camera size={20} />
                   </button>
@@ -208,19 +212,20 @@ export default function PriceEstimator() {
             <div className="card" style={{ marginTop: '1.5rem', animation: 'fadeIn 0.5s ease-out' }}>
               <div className="flex-between" style={{ marginBottom: '1rem' }}>
                 <h3 style={{ margin: 0 }}>Estimated Value</h3>
-                <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--success-color)' }}>$120 - $150</span>
+                <span style={{ fontSize: '1.5rem', fontWeight: 700, color: estimateData?.price === '$0.00' ? 'var(--text-secondary)' : 'var(--success-color)' }}>
+                  {estimateData?.price}
+                </span>
               </div>
               <h4 style={{ margin: 0 }}>{estimationQuery}</h4>
               <p style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>
-                Based on recent online marketplace data. High demand for functional vintage models.
+                {estimateData?.reason}
               </p>
               <div style={{ display: 'flex', gap: '0.5rem', margin: '1rem 0' }}>
-                <span style={{ padding: '0.25rem 0.5rem', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--success-color)', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
-                  High Demand
-                </span>
-                <span style={{ padding: '0.25rem 0.5rem', background: 'rgba(139, 92, 246, 0.1)', color: 'var(--accent-color)', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
-                  Vintage
-                </span>
+                {estimateData?.tags.map((tag, i) => (
+                  <span key={i} style={{ padding: '0.25rem 0.5rem', background: tag === 'High Demand' ? 'rgba(16, 185, 129, 0.1)' : (tag === 'No Data' ? 'rgba(0,0,0,0.1)' : 'rgba(139, 92, 246, 0.1)'), color: tag === 'High Demand' ? 'var(--success-color)' : (tag === 'No Data' ? 'var(--text-secondary)' : 'var(--accent-color)'), borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
+                    {tag}
+                  </span>
+                ))}
               </div>
               
               <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>

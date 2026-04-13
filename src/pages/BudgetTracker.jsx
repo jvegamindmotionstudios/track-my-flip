@@ -350,6 +350,57 @@ export default function BudgetTracker() {
         </select>
       </div>
 
+      {/* KPI COMMAND CENTER DASHBOARD */}
+      <h3 style={{ marginTop: '1rem', marginBottom: '1rem' }}>Financial Overview</h3>
+      
+      <div className="card glass" style={{ padding: '1.5rem', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            
+            {/* Net Profit Block */}
+            <div style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)', padding: '1rem', borderRadius: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <TrendingDown size={14} color="var(--success-color)" style={{ transform: 'rotate(180deg)' }} /> Total Est. Net Profit
+               </div>
+               <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--success-color)', letterSpacing: '-1px' }}>
+                  ${(revenue - spent - fees).toFixed(2)}
+               </div>
+            </div>
+
+            {/* Tax Write-offs Block */}
+            <div style={{ background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.2)', padding: '1rem', borderRadius: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Car size={14} color="#3b82f6" /> Earned Tax Write-offs
+               </div>
+               <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#3b82f6', letterSpacing: '-0.5px' }}>
+                  ${(mileage * 0.67).toFixed(2)}
+               </div>
+               <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Based on {mileage.toFixed(1)} IRS mi</div>
+            </div>
+         </div>
+
+         {/* Sourcing Budget Progress Bar */}
+         <div style={{ background: 'var(--bg-color)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+            <div className="flex-between" style={{ marginBottom: '0.5rem' }}>
+               <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Sourcing Budget</div>
+               <div style={{ fontSize: '0.8rem', fontWeight: 600, color: spent > budget ? 'var(--danger-color)' : 'var(--text-primary)' }}>
+                  ${spent.toFixed(2)} / ${budget.toFixed(2)}
+               </div>
+            </div>
+            
+            {/* The Bar */}
+            <div style={{ width: '100%', height: '12px', background: 'rgba(0,0,0,0.1)', borderRadius: '6px', overflow: 'hidden' }}>
+               <div style={{ 
+                  height: '100%', 
+                  width: `${Math.min((spent / (budget || 1)) * 100, 100)}%`, 
+                  background: spent > budget ? 'var(--danger-color)' : 'linear-gradient(90deg, var(--accent-color) 0%, #a78bfa 100%)',
+                  borderRadius: '6px',
+                  transition: 'width 0.5s ease-out'
+               }} />
+            </div>
+            {spent > budget && <div style={{ fontSize: '0.7rem', color: 'var(--danger-color)', marginTop: '0.25rem', fontWeight: 600 }}>OVER BUDGET</div>}
+         </div>
+      </div>
+
       <h3 style={{ marginTop: '1rem', marginBottom: '1rem' }}>Master Audit</h3>
       <div className="card glass" style={{ border: '1px solid rgba(34, 197, 94, 0.3)', margin: 0, padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>

@@ -109,6 +109,20 @@ export default function FindSales() {
   const [showSearchHere, setShowSearchHere] = useState(false);
   const [scrolledLocation, setScrolledLocation] = useState(null);
 
+  useEffect(() => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setCenter([position.coords.latitude, position.coords.longitude]);
+        },
+        (error) => {
+          console.log("Could not get initial location, using default:", error);
+        },
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+    }
+  }, []);
+
   const handleMapMoved = (newCenter) => {
       setScrolledLocation([newCenter.lat, newCenter.lng]);
       setShowSearchHere(true);

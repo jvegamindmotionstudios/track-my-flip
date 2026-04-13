@@ -353,6 +353,15 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  const clearRoute = async () => {
+    if (window.confirm("Are you sure you want to clear your current route? This will remove all stops.")) {
+      setStops([]);
+      if (user && isSupabaseConfigured) {
+        await supabase.from('stops').delete().eq('user_id', user.id);
+      }
+    }
+  };
+
   const spent = inventory.reduce((total, item) => total + (Number(item.price) || 0), 0);
   const revenue = inventory.reduce((total, item) => total + (item.status === 'sold' ? (Number(item.soldPrice) || 0) : 0), 0);
   const fees = inventory.reduce((total, item) => total + (item.status === 'sold' ? (Number(item.platformFees) || 0) : 0), 0);
@@ -372,7 +381,7 @@ export const AppProvider = ({ children }) => {
       activeDrive, setActiveDrive,
       classifyDrive,
       pendingDrivePrompt, setPendingDrivePrompt,
-      resetDay,
+      resetDay, clearRoute,
       userProfile, setUserProfile,
       isPro, setIsPro,
       isTrialing, trialDaysLeft
