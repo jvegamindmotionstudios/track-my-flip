@@ -4,7 +4,7 @@ import Tesseract from 'tesseract.js';
 import { useAppContext } from '../context/AppContext';
 
 export default function InventoryManager() {
-  const { isPro, isTrialing, inventory, addInventoryItem, updateInventoryItem, stops } = useAppContext();
+  const { isPro, isTrialing, inventory, addInventoryItem, updateInventoryItem, stops, budget, setBudget, spent, revenue, fees } = useAppContext();
   const [isAdding, setIsAdding] = useState(false);
   const [activeItem, setActiveItem] = useState(null);
   const [soldPrice, setSoldPrice] = useState('');
