@@ -39,7 +39,13 @@ function MainInterface({ session }) {
   };
 
   const handleSubscribe = (billingCycle) => {
-    alert(`In production, this routes to your secure Stripe checkout for the ${billingCycle} plan!\n(User Reference ID: ${session.user.id})`);
+    // Replace these URLs once your Stripe Payment Links are generated:
+    const monthlyURL = "https://buy.stripe.com/test_placeholder_monthly";
+    const yearlyURL = "https://buy.stripe.com/test_placeholder_yearly";
+    
+    const checkoutUrl = billingCycle === 'monthly' ? monthlyURL : yearlyURL;
+    // We append the Supabase user ID so Stripe webhooks can securely credit this exact account later!
+    window.location.href = `${checkoutUrl}?client_reference_id=${session?.user?.id || 'guest'}`;
   };
 
   const renderContent = () => {
