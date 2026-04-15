@@ -1,0 +1,1 @@
+import{n as e,t}from"./index-CxfkAtzv.js";export{t as isSupabaseConfigured,e as supabase};
