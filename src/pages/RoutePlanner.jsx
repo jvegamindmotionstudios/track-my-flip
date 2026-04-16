@@ -50,7 +50,7 @@ function LiveLocationMarker() {
   );
 }
 
-function MapRouteUpdater({ stops }) {
+function MapRouteUpdater({ stops, center }) {
   const map = useMap();
   useEffect(() => {
     if (stops && stops.length > 0) {
@@ -59,8 +59,10 @@ function MapRouteUpdater({ stops }) {
       setTimeout(() => {
           map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
       }, 100);
+    } else if (center) {
+      map.setView(center, 13);
     }
-  }, [stops, map]);
+  }, [stops, center, map]);
   return null;
 }
 
@@ -88,6 +90,7 @@ const createCustomIcon = (index) => {
 
 export default function RoutePlanner() {
   const { stops, addStop, updateStopStatus, budget, spent, mileage, setMileage, startOdo, setStartOdo, endOdo, setEndOdo, clearRoute } = useAppContext();
+  const [center, setCenter] = useState([40.7128, -74.0060]);
   const activeStops = stops
       .filter(s => !s.status || s.status === 'pending')
       .sort((a,b) => (a.priority === 'high' ? -1 : 1));
@@ -101,6 +104,18 @@ export default function RoutePlanner() {
   const [lat, setLat] = useState(null);
   const [lng, setLng] = useState(null);
   const [isLocating, setIsLocating] = useState(false);
+
+  useEffect(() => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setCenter([position.coords.latitude, position.coords.longitude]);
+        },
+        (error) => console.log("Init geo err", error),
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+    }
+  }, []);
 
   const handleAddStop = async (e) => {
     e.preventDefault();
@@ -308,7 +323,7 @@ export default function RoutePlanner() {
         position: 'relative'
       }}>
         <MapContainer 
-          center={[40.7128, -74.0060]} 
+          center={center} 
           zoom={13} 
           style={{ height: '100%', width: '100%', zIndex: 1 }}
           zoomControl={false}
@@ -317,7 +332,7 @@ export default function RoutePlanner() {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
           />
-          <MapRouteUpdater stops={activeStops.length > 0 ? activeStops : stops} />
+          <MapRouteUpdater stops={activeStops.length > 0 ? activeStops : stops} center={center} />
           <LiveLocationMarker />
           {stops.map((stop, i) => (
             <Marker key={stop.id} position={[stop.lat, stop.lng]} icon={createCustomIcon(i + 1)}>
