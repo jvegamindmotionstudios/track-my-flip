@@ -180,43 +180,11 @@ export default function FindSales() {
     }
   };
 
-  const generateAlgorithmSales = (lat, lng) => {
-      // Determines whether the user selected popup sales
-      const validTypes = activeSources.filter(s => s === 'Yard Sales' || s === 'Estate Sales');
-      if (validTypes.length === 0) return [];
-
-      const mockData = [];
-      const itemPool = ["Video games, Consoles", "Vintage electronics, Cameras", "Clothes, Shoes, Accessories", "Furniture, Farmhouse Decor", "Tools, Hardware, Lawn Care", "Toys, Collectibles, Comics", "Antiques, Silverware"];
-      const descPool = ["Multi-Family Huge Sale", "Everything Must Go!", "Moving Sale - Entire House", "Estate Liquidation", "Clearing out the garage"];
-      
-      const count = Math.floor(Math.random() * 15) + 15; // 15 to 30 markers
-
-      for (let i = 0; i < count; i++) {
-          const randType = validTypes[Math.floor(Math.random() * validTypes.length)];
-          const distLat = (Math.random() - 0.5) * 0.12; 
-          const distLng = (Math.random() - 0.5) * 0.12;
-
-          mockData.push({
-              id: `algo-${Date.now()}-${i}`,
-              lat: lat + distLat,
-              lng: lng + distLng,
-              type: randType === 'Yard Sales' ? 'Yard Sale' : 'Estate Sale',
-              address: descPool[Math.floor(Math.random() * descPool.length)],
-              items: itemPool[Math.floor(Math.random() * itemPool.length)],
-              time: 'Sat 8:00 AM - 1:00 PM',
-              source: 'algorithm'
-          });
-      }
-      return mockData;
-  };
-
   const executeLiveSearch = async (lat, lng) => {
       // 1. Fetch Permanent Businesses (OSM)
       const osmResults = await fetchOverpassData(lat, lng);
-      // 2. Seamless Algorithm Generator for Yard/Estate Sales
-      const simulatedResults = generateAlgorithmSales(lat, lng);
 
-      setSales([...osmResults, ...simulatedResults]);
+      setSales([...osmResults]);
   };
 
   const scanArea = async () => {

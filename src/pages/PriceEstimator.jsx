@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Search, Sparkles, Camera, X, Maximize, ExternalLink, ScanLine } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Search, Sparkles, Camera, Maximize, ExternalLink, Image as ImageIcon, Loader2 } from 'lucide-react';
 import ProfitCalculator from './ProfitCalculator';
-import { Html5Qrcode } from 'html5-qrcode';
+import { supabase } from '../config/supabaseClient';
 
 export default function PriceEstimator() {
   const [activeTab, setActiveTab] = useState('estimator'); // 'estimator' or 'calculator'
@@ -12,106 +12,33 @@ export default function PriceEstimator() {
   const [estimateData, setEstimateData] = useState(null);
   const cameraRef = useRef(null);
 
-  const generateMockEstimate = (queryStr) => {
-    const lower = queryStr.toLowerCase().trim();
-    
-    // Profanity/Joke filter
-    const badWords = ['balls', 'dick', 'ass', 'poop', 'shit', 'fuck', 'crap', 'junk', 'nothing', 'bitch', 'boob', 'testicle'];
-    if (badWords.some(word => lower.includes(word) && !word.includes('ass') /* handle "glass" etc. properly if needed, but let's be careful. Actually 'ass' as a standalone word works if split, but includes will catch glass */ ) || lower.match(/\b(ass|balls|dick|poop|shit|fuck|crap|junk|cock)\b/i)) {
-      return {
-         price: '$0.00',
-         reason: "We couldn't find any comps for this. Please enter a valid item for resale.",
-         tags: ['No Data']
-      };
-    }
-    
-    // Some keyword based mocking
-    let base = 15;
-    if (lower.includes('vintage') || lower.includes('antique')) base += 45;
-    if (lower.includes('camera')) base += 40;
-    if (lower.includes('nintendo') || lower.includes('playstation') || lower.includes('xbox')) base += 60;
-    if (lower.includes('gold') || lower.includes('silver') || lower.includes('jewelry')) base += 120;
-    if (lower.includes('book') || lower.includes('dvd') || lower.includes('cd')) base -= 10;
-    if (lower.includes('clothes') || lower.includes('shirt') || lower.includes('shoes')) base += 10;
-    if (lower.includes('iphone') || lower.includes('macbook') || lower.includes('ipad') || lower.includes('apple')) base += 150;
-
-    // Use string hash to add a pseudo-random variation based on the exact characters
-    let hash = 0;
-    for (let i = 0; i < lower.length; i++) {
-       hash = ((hash << 5) - hash) + lower.charCodeAt(i);
-       hash = hash & hash;
-    }
-    
-    const variation = Math.abs(hash % 40);
-    const lowEnd = Math.max(2, base + variation);
-    const highEnd = lowEnd + Math.floor(lowEnd * 0.3) + 8;
-    
-    let reason = "Based on recent online marketplace data.";
-    let tags = [];
-    
-    if (lowEnd > 80) {
-       reason += " High demand category.";
-       tags.push('High Demand');
-    }
-    if (lower.includes('vintage') || lower.includes('antique')) tags.push('Vintage');
-    if (tags.length === 0) tags.push('Average Sales');
-    
-    return {
-       price: `$${lowEnd} - $${highEnd}`,
-       reason,
-       tags
-    };
-  };
-
-  // Scanner state
-  const [isScanning, setIsScanning] = useState(false);
-
-  useEffect(() => {
-    let scanner;
-    if (isScanning) {
-      setTimeout(() => {
-        try {
-          if (!document.getElementById("barcode-reader")) return;
-          scanner = new Html5Qrcode("barcode-reader");
-          scanner.start(
-            { facingMode: "environment" },
-            { fps: 10, qrbox: { width: 300, height: 150 } },
-            (decodedText) => {
-              // Success!
-              scanner.stop().then(() => {
-                scanner.clear();
-                setIsScanning(false);
-                setQuery(decodedText);
-                triggerEstimate(decodedText);
-              }).catch(console.error);
-            },
-            (error) => { /* ignore frame errors */ }
-          ).catch((err) => {
-            console.error("Camera start failed.", err);
-          });
-        } catch(e) {
-            console.error("Initialization Failed:", e);
-        }
-      }, 150);
-    }
-
-    return () => {
-      if (scanner && scanner.isScanning) {
-        scanner.stop().then(() => scanner.clear()).catch(console.error);
-      }
-    };
-  }, [isScanning]);
-
-  const triggerEstimate = (searchQuery = query) => {
+  const triggerEstimate = async (searchQuery = query) => {
     if (!searchQuery) return;
     setIsEstimating(true);
     setHasResult(false);
-    setTimeout(() => {
-      setIsEstimating(false);
-      setEstimationQuery(searchQuery);
-      setEstimateData(generateMockEstimate(searchQuery));
-      setHasResult(true);
-    }, 1500);
+    setEstimationQuery(searchQuery);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('ebay-comps', {
+        body: { query: searchQuery }
+      });
+      
+      if (error) throw new Error("Edge function invocation failed.");
+      if (data.error) throw new Error(data.error);
+      
+      setEstimateData(data);
+    } catch (err) {
+      console.log("Live API fetch failed:", err.message);
+      setEstimateData({
+         price: 'Search Failed',
+         reason: "We couldn't connect to eBay. Make sure you have network access.",
+         tags: ['Offline'],
+         items: []
+      });
+    }
+
+    setIsEstimating(false);
+    setHasResult(true);
   };
 
   const handleEstimate = (e) => {
@@ -122,132 +49,214 @@ export default function PriceEstimator() {
   const handleNativeEstimationCapture = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    
-    // In a real production app with AI Vision, you would upload this blob 
-    // to Google Cloud Vision or OpenAI Vision for parsing.
-    // For MVP demonstration, we will fake the vision extraction:
-    const mockItem = "Vintage Polaroid SX-70 Camera";
-    setQuery(mockItem);
-    triggerEstimate(mockItem);
+
+    setIsEstimating(true);
+    setHasResult(false);
+    setEstimationQuery('Visual Item Photo');
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = async () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 800; // Compress image down to eBay-friendly max width
+        const MAX_HEIGHT = 800;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Output compressed JPEG base64
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+
+        try {
+          const { data, error } = await supabase.functions.invoke('ebay-comps', {
+            body: { imageBase64: compressedBase64 }
+          });
+          
+          if (error) throw new Error("Edge function invocation failed.");
+          if (data.error) throw new Error(data.error);
+          
+          setEstimateData(data);
+        } catch (err) {
+          console.log("Image search failed:", err.message);
+          setEstimateData({
+             price: 'No Visual Match',
+             reason: "eBay visual search couldn't confidently identify this item. Try snapping it from a different angle or typing the brand.",
+             tags: ['Try Text Search'],
+             items: []
+          });
+        }
+        setIsEstimating(false);
+        setHasResult(true);
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
     e.target.value = '';
   };
 
-  if (isScanning) {
-    return (
-      <div style={{
-        position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-        background: '#0a0a0a', zIndex: 9999, display: 'flex', flexDirection: 'column'
-      }}>
-        <div style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', zIndex: 5 }}>
-          <button className="btn" style={{ background: 'rgba(0,0,0,0.06)', border: 'none' }} onClick={() => setIsScanning(false)}>
-            <X size={24} color="#fff" />
-          </button>
-          <div style={{ color: 'var(--text-inverse)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <ScanLine size={18} className="text-accent" /> Scan UPC / Barcode
-          </div>
-        </div>
-        
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <div id="barcode-reader" style={{ width: '100%', maxWidth: '500px', borderRadius: '16px', overflow: 'hidden' }}></div>
-          <p className="text-secondary" style={{ marginTop: '1.5rem', textAlign: 'center', padding: '0 1rem' }}>
-            Point camera at any barcode or ISBN to instantly pull comp data.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div>
+    <div style={{ paddingBottom: '2rem' }}>
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', background: 'var(--bg-card)', padding: '0.25rem', borderRadius: '12px' }}>
-         <button onClick={() => setActiveTab('estimator')} style={{ flex: 1, padding: '0.5rem', border: 'none', background: activeTab === 'estimator' ? 'var(--accent-color)' : 'transparent', color: activeTab === 'estimator' ? '#fff' : 'var(--text-secondary)', borderRadius: '8px' }}>🔍 Visual Comps</button>
-         <button onClick={() => setActiveTab('calculator')} style={{ flex: 1, padding: '0.5rem', border: 'none', background: activeTab === 'calculator' ? 'var(--accent-color)' : 'transparent', color: activeTab === 'calculator' ? '#fff' : 'var(--text-secondary)', borderRadius: '8px' }}>🧮 Profit Calc</button>
+         <button onClick={() => setActiveTab('estimator')} style={{ flex: 1, padding: '0.5rem', border: 'none', background: activeTab === 'estimator' ? 'var(--accent-color)' : 'transparent', color: activeTab === 'estimator' ? '#fff' : 'var(--text-secondary)', borderRadius: '8px', fontWeight: 600 }}>🔍 Visual Comps</button>
+         <button onClick={() => setActiveTab('calculator')} style={{ flex: 1, padding: '0.5rem', border: 'none', background: activeTab === 'calculator' ? 'var(--accent-color)' : 'transparent', color: activeTab === 'calculator' ? '#fff' : 'var(--text-secondary)', borderRadius: '8px', fontWeight: 600 }}>🧮 Profit Calc</button>
       </div>
 
       {activeTab === 'estimator' ? (
-        <div>
-          <div style={{ marginBottom: '1.5rem' }}>
-            <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+          <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
+            <h1 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '0.25rem', fontSize: '1.75rem' }}>
               Comp It <Sparkles size={24} className="text-accent" />
             </h1>
-            <p>Check potential resale value</p>
+            <p className="text-secondary" style={{ margin: 0, fontSize: '0.9rem' }}>Instant live market valuations</p>
           </div>
 
-          <div className="card glass">
-            <form onSubmit={handleEstimate}>
-              <div className="input-group">
-                <label className="input-label">Item Description</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {/* Massive Visual Search Lead Action */}
+            <div 
+              onClick={(e) => {
+                if (isEstimating) e.preventDefault();
+                else cameraRef.current.click();
+              }}
+              style={{
+                background: 'linear-gradient(135deg, var(--accent-color) 0%, #a78bfa 100%)',
+                borderRadius: '16px',
+                padding: '2rem 1.5rem',
+                color: '#fff',
+                textAlign: 'center',
+                cursor: isEstimating ? 'wait' : 'pointer',
+                boxShadow: '0 8px 30px var(--accent-glow)',
+                position: 'relative',
+                overflow: 'hidden',
+                transition: 'transform 0.2s',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '0.75rem',
+                ...(isEstimating ? { opacity: 0.8, transform: 'scale(0.98)' } : {})
+              }}
+            >
+              <input type="file" ref={cameraRef} accept="image/*" capture="environment" style={{display: 'none'}} onChange={handleNativeEstimationCapture} disabled={isEstimating} />
+              
+              {isEstimating && estimationQuery === 'Visual Item Photo' ? (
+                <>
+                  <Loader2 size={48} style={{ animation: 'spin 1s linear infinite' }} />
+                  <div>
+                    <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.25rem', fontWeight: 700 }}>Processing Image...</h3>
+                    <p style={{ margin: 0, fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)' }}>Matching pixels against live eBay listings</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Camera size={48} />
+                  <div>
+                    <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.25rem', fontWeight: 700 }}>Tap to Identify</h3>
+                    <p style={{ margin: 0, fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)' }}>Snap a photo to automatically pull back value</p>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', color: 'var(--text-secondary)' }}>
+               <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }}></div>
+               <span style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>or manually type</span>
+               <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }}></div>
+            </div>
+
+            {/* Clean Text Fallback */}
+            <div className="card glass" style={{ margin: 0, padding: '1rem', border: '1px solid var(--border-color)' }}>
+              <form onSubmit={handleEstimate}>
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                  <Search size={18} style={{ position: 'absolute', left: '1rem', color: 'var(--text-secondary)' }} />
+                  <Search size={18} style={{ position: 'absolute', left: '1rem', color: 'var(--accent-color)' }} />
                   <input
                     type="text"
                     className="input-field"
-                    style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
-                    placeholder="e.g. Polaroid SX-70 Camera"
+                    style={{ paddingLeft: '2.75rem', paddingRight: '6rem', width: '100%', height: '54px', fontSize: '1.1rem', background: 'var(--bg-primary)', border: '1px solid transparent', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)' }}
+                    placeholder="e.g. Sony Walkman"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
+                    disabled={isEstimating}
                   />
-                  <input type="file" ref={cameraRef} accept="image/*" capture="environment" style={{display: 'none'}} onChange={handleNativeEstimationCapture} />
                   <button 
-                    type="button" 
-                    onClick={() => cameraRef.current.click()}
-                    style={{ position: 'absolute', right: '0.5rem', background: 'none', border: 'none', color: 'var(--accent-color)', cursor: 'pointer', padding: '0.25rem' }}>
-                    <Camera size={20} />
+                    type="submit" 
+                    disabled={isEstimating || !query}
+                    style={{ position: 'absolute', right: '0.5rem', background: query ? 'var(--accent-color)' : 'var(--bg-color)', border: 'none', color: query ? '#fff' : 'var(--text-secondary)', padding: '0.5rem 1rem', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', opacity: isEstimating ? 0.7 : 1 }}
+                  >
+                    {isEstimating && estimationQuery !== 'Visual Item Photo' ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : 'Comp'}
                   </button>
                 </div>
-              </div>
-              
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                <button type="submit" className="btn btn-primary" style={{ flex: 2 }} disabled={isEstimating}>
-                    <Search size={18} style={{ marginRight: '0.25rem' }} /> {isEstimating ? 'Analyzing...' : 'Search'}
-                </button>
-                <button type="button" className="btn" onClick={() => setIsScanning(true)} style={{ flex: 1.5, background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
-                    <ScanLine size={18} style={{ marginRight: '0.25rem' }} /> Scan UPC
-                </button>
-              </div>
-            </form>
+              </form>
+            </div>
           </div>
 
           {!isEstimating && hasResult && (
-            <div className="card" style={{ marginTop: '1.5rem', animation: 'fadeIn 0.5s ease-out' }}>
-              <div className="flex-between" style={{ marginBottom: '1rem' }}>
-                <h3 style={{ margin: 0 }}>Estimated Value</h3>
-                <span style={{ fontSize: '1.5rem', fontWeight: 700, color: estimateData?.price === '$0.00' ? 'var(--text-secondary)' : 'var(--success-color)' }}>
-                  {estimateData?.price}
-                </span>
+            <div className="card" style={{ marginTop: '2rem', animation: 'fadeIn 0.4s ease-out', borderTop: '4px solid var(--accent-color)', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+              
+              <div style={{ paddingBottom: '1rem', borderBottom: '1px dashed var(--border-color)', marginBottom: '1rem' }}>
+                <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.5px' }}>Query Context</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
+                    {estimationQuery === 'Visual Item Photo' ? <ImageIcon size={16} className="text-accent" /> : <Search size={16} className="text-secondary" />}
+                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{estimationQuery}</span>
+                </div>
               </div>
-              <h4 style={{ margin: 0 }}>{estimationQuery}</h4>
-              <p style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>
+
+              <div className="flex-between" style={{ alignItems: 'flex-start', marginBottom: '1rem' }}>
+                <div>
+                  <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.1rem', color: 'var(--text-secondary)' }}>Market Value</h3>
+                  <span style={{ fontSize: estimateData?.price === 'No Comps Found' || estimateData?.price === 'No Visual Match' ? '1.25rem' : '2.25rem', fontWeight: 800, color: estimateData?.price === 'No Comps Found' || estimateData?.price === 'No Visual Match' ? 'var(--danger-color)' : 'var(--success-color)', letterSpacing: '-0.5px' }}>
+                    {estimateData?.price}
+                  </span>
+                </div>
+              </div>
+              
+              <p style={{ fontSize: '0.9rem', lineHeight: 1.5, margin: '0 0 1.25rem 0', color: 'var(--text-secondary)' }}>
                 {estimateData?.reason}
               </p>
-              <div style={{ display: 'flex', gap: '0.5rem', margin: '1rem 0' }}>
+              
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
                 {estimateData?.tags.map((tag, i) => (
-                  <span key={i} style={{ padding: '0.25rem 0.5rem', background: tag === 'High Demand' ? 'rgba(16, 185, 129, 0.1)' : (tag === 'No Data' ? 'rgba(0,0,0,0.1)' : 'rgba(139, 92, 246, 0.1)'), color: tag === 'High Demand' ? 'var(--success-color)' : (tag === 'No Data' ? 'var(--text-secondary)' : 'var(--accent-color)'), borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
+                  <span key={i} style={{ padding: '0.35rem 0.6rem', background: tag === 'High Demand' ? 'rgba(16, 185, 129, 0.1)' : ((tag === 'No Data' || tag === 'Try Refining Search' || tag === 'Try Text Search') ? 'rgba(239, 68, 68, 0.1)' : 'rgba(139, 92, 246, 0.1)'), color: tag === 'High Demand' ? '#10b981' : ((tag === 'No Data' || tag === 'Try Refining Search' || tag === 'Try Text Search') ? '#ef4444' : 'var(--accent-color)'), borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, border: `1px solid ${tag === 'High Demand' ? 'rgba(16, 185, 129, 0.2)' : ((tag === 'No Data' || tag === 'Try Refining Search') ? 'rgba(239, 68, 68, 0.2)' : 'rgba(139, 92, 246, 0.2)')}` }}>
                     {tag}
                   </span>
                 ))}
               </div>
               
-              <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
-                <p className="text-secondary" style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>Verify current listings:</p>
+              <div style={{ background: 'var(--bg-primary)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                <p className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', margin: '0 0 0.75rem 0' }}>Manual Verifications</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <a 
-                    href={`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(estimationQuery)}`} 
+                    href={`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(estimationQuery === 'Visual Item Photo' ? '' : estimationQuery)}`} 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="btn" 
-                    style={{ justifyContent: 'space-between', background: 'rgba(0, 100, 210, 0.1)', borderColor: 'rgba(0, 100, 210, 0.3)', color: '#0064d2' }}
+                    style={{ justifyContent: 'space-between', background: 'rgba(0, 100, 210, 0.08)', borderColor: 'rgba(0, 100, 210, 0.2)', color: '#0064d2', fontSize: '0.9rem', padding: '0.75rem 1rem' }}
                   >
-                    Search on eBay <ExternalLink size={16} />
+                    Open Live eBay Search <ExternalLink size={16} />
                   </a>
                   <a 
-                    href={`https://www.mercari.com/search/?keyword=${encodeURIComponent(estimationQuery)}`} 
+                    href={`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(estimationQuery === 'Visual Item Photo' ? '' : estimationQuery)}`} 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="btn" 
-                    style={{ justifyContent: 'space-between', background: 'rgba(230, 0, 18, 0.1)', borderColor: 'rgba(230, 0, 18, 0.3)', color: '#e60012' }}
+                    style={{ justifyContent: 'space-between', background: 'rgba(52, 168, 83, 0.08)', borderColor: 'rgba(52, 168, 83, 0.2)', color: '#0f9d58', fontSize: '0.9rem', padding: '0.75rem 1rem' }}
                   >
-                    Search on Mercari <ExternalLink size={16} />
+                    Check Google Shopping <ExternalLink size={16} />
                   </a>
                 </div>
               </div>
