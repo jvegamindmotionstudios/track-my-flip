@@ -59,8 +59,8 @@ export default function PriceEstimator() {
       const img = new Image();
       img.onload = async () => {
         const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 800; // Compress image down to eBay-friendly max width
-        const MAX_HEIGHT = 800;
+        const MAX_WIDTH = 1200; // Increased resolution for better AI recognition
+        const MAX_HEIGHT = 1200;
         let width = img.width;
         let height = img.height;
 
@@ -82,7 +82,7 @@ export default function PriceEstimator() {
         ctx.drawImage(img, 0, 0, width, height);
         
         // Output compressed JPEG base64
-        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.85);
 
         try {
           const { data, error } = await supabase.functions.invoke('ebay-comps', {
