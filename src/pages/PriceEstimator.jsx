@@ -238,26 +238,33 @@ export default function PriceEstimator() {
               </div>
               
               <div style={{ background: 'var(--bg-primary)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                <p className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', margin: '0 0 0.75rem 0' }}>Manual Verifications</p>
+                <p className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', margin: '0 0 0.75rem 0' }}>Top Found Matches</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  <a 
-                    href={`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(estimationQuery === 'Visual Item Photo' ? '' : estimationQuery)}`} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="btn" 
-                    style={{ justifyContent: 'space-between', background: 'rgba(0, 100, 210, 0.08)', borderColor: 'rgba(0, 100, 210, 0.2)', color: '#0064d2', fontSize: '0.9rem', padding: '0.75rem 1rem' }}
-                  >
-                    Open Live eBay Search <ExternalLink size={16} />
-                  </a>
-                  <a 
-                    href={`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(estimationQuery === 'Visual Item Photo' ? '' : estimationQuery)}`} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="btn" 
-                    style={{ justifyContent: 'space-between', background: 'rgba(52, 168, 83, 0.08)', borderColor: 'rgba(52, 168, 83, 0.2)', color: '#0f9d58', fontSize: '0.9rem', padding: '0.75rem 1rem' }}
-                  >
-                    Check Google Shopping <ExternalLink size={16} />
-                  </a>
+                  {estimateData?.items && estimateData.items.length > 0 ? (
+                     estimateData.items.slice(0, 3).map((item, idx) => (
+                        <a 
+                          key={idx}
+                          href={item.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="btn" 
+                          style={{ justifyContent: 'space-between', background: 'rgba(0, 100, 210, 0.08)', borderColor: 'rgba(0, 100, 210, 0.2)', color: '#0064d2', fontSize: '0.85rem', padding: '0.75rem 1rem', display: 'flex', gap: '1rem' }}
+                        >
+                          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>{item.title}</span> 
+                          <span style={{ fontWeight: 800 }}>${parseFloat(item.price).toFixed(2)}</span>
+                        </a>
+                     ))
+                  ) : (
+                    <a 
+                      href={`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(estimationQuery === 'Visual Item Photo' ? '' : estimationQuery)}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="btn" 
+                      style={{ justifyContent: 'space-between', background: 'rgba(0, 100, 210, 0.08)', borderColor: 'rgba(0, 100, 210, 0.2)', color: '#0064d2', fontSize: '0.9rem', padding: '0.75rem 1rem' }}
+                    >
+                      Open Live eBay Search <ExternalLink size={16} />
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
