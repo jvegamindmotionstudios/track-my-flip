@@ -3,6 +3,7 @@ import { Search, Map as MapIcon, Crosshair, X, Store, Home } from 'lucide-react'
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents, ZoomControl } from 'react-leaflet';
 import L from 'leaflet';
 import { useAppContext } from '../context/AppContext';
+import { supabase } from '../config/supabaseClient';
 
 // Simple component to update map center dynamically
 function MapUpdater({ center }) {
@@ -184,7 +185,32 @@ export default function FindSales() {
       // 1. Fetch Permanent Businesses (OSM)
       const osmResults = await fetchOverpassData(lat, lng);
 
-      setSales([...osmResults]);
+      // 2. Fetch Live Local Yard Sales via Supabase proxy
+      let activeYardSales = [];
+      try {
+         if (activeSources.includes('Yard Sales') || activeSources.includes('Estate Sales')) {
+             const { data, error } = await supabase.functions.invoke('find-sales', {
+                 body: { lat, lng, radius: 25 } // 25 mile search distance
+             });
+             
+             if (data && data.sales) {
+                 activeYardSales = data.sales.map(s => ({
+                     ...s,
+                     type: s.title.toLowerCase().includes('estate') ? 'Estate Sale' : 'Yard Sale',
+                     address: s.title, // Craigslist titles often have the city or street
+                     items: s.description || 'Assorted Items',
+                     time: 'Active Listing',
+                     source: 'edge'
+                 }));
+             }
+             if (data && data.error) console.error("Proxy Error:", data.error);
+             if (error) console.error("Edge Function Error:", error);
+         }
+      } catch (err) {
+         console.error("Failed executing find-sales proxy", err);
+      }
+
+      setSales([...osmResults, ...activeYardSales]);
   };
 
   const scanArea = async () => {
