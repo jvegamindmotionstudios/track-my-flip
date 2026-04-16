@@ -212,7 +212,7 @@ export default function PriceEstimator() {
                 <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.5px' }}>Query Context</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
                     {estimationQuery === 'Visual Item Photo' ? <ImageIcon size={16} className="text-accent" /> : <Search size={16} className="text-secondary" />}
-                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{estimationQuery}</span>
+                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{estimateData?.interpretedQuery || estimationQuery}</span>
                 </div>
               </div>
 
