@@ -6,9 +6,15 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
 export default function BudgetTracker() {
-  const { budget: liveBudget, spent: liveSpent, revenue: liveRevenue, fees: liveFees, inventory: liveInventory, stops: liveStops, mileage: liveMileage, trackedDrives: liveTrackedDrives, startOdo: liveStartOdo, endOdo: liveEndOdo, resetDay, history } = useAppContext();
+  const { budget: liveBudget, spent: liveSpent, revenue: liveRevenue, fees: liveFees, inventory: liveInventory, stops: liveStops, mileage: liveMileage, trackedDrives: liveTrackedDrives, startOdo: liveStartOdo, endOdo: liveEndOdo, resetDay, history, userProfile, setUserProfile } = useAppContext();
   
   const [selectedDate, setSelectedDate] = useState('live');
+  const [showProfileConfig, setShowProfileConfig] = useState(false);
+
+  const handleProfileChange = (e) => {
+    const { name, value } = e.target;
+    setUserProfile(prev => ({ ...prev, [name]: value }));
+  };
 
   const isHistorical = selectedDate !== 'live';
   const historicalData = isHistorical ? history.find(h => h.id.toString() === selectedDate)?.backupData : null;
@@ -60,46 +66,57 @@ export default function BudgetTracker() {
     XLSX.writeFile(wb, filename);
   };
 
+  const getHeaderEntity = () => {
+     return userProfile?.companyName ? `${userProfile.companyName}\n${userProfile.address || ''}\n${userProfile.email || ''}` : 'Independent Provider';
+  };
+
   const handleExportPnL = (action) => {
     let today = exportDateStr;
     const wb = XLSX.utils.book_new();
     const pnlData = [
-      { 'Account Group': 'Gross Revenue', 'Description': 'Asset Sales', 'Amount': revenue },
-      { 'Account Group': 'Cost of Goods Sold', 'Description': 'Inventory Purchases', 'Amount': -spent },
-      { 'Account Group': 'Operating Expenses', 'Description': 'Platform Fees & Shipping', 'Amount': -fees },
-      { 'Account Group': 'Operating Expenses', 'Description': 'Standard Mileage Deduction', 'Amount': -(mileage * 0.67) },
-      { 'Account Group': 'Net Income (Loss)', 'Description': 'Realized Profit / Loss', 'Amount': (revenue - spent - fees - (mileage * 0.67)) },
-      { 'Account Group': '', 'Description': '', 'Amount': null },
-      { 'Account Group': 'Asset/Capital', 'Description': 'Initial Working Capital', 'Amount': budget },
-      { 'Account Group': 'Asset/Capital', 'Description': 'End of Day Liquid Cash', 'Amount': budget - spent + revenue - fees }
+      { 'Schedule C Accounting': 'ENTITY IDENTIFIER', 'Line Item': getHeaderEntity().replace(/\n/g, ', '), 'Amount': '' },
+      { 'Schedule C Accounting': '', 'Line Item': '', 'Amount': '' },
+      { 'Schedule C Accounting': 'Part I: Gross Revenue', 'Line Item': 'Asset Sales Receipts', 'Amount': revenue },
+      { 'Schedule C Accounting': 'Part III: Cost of Goods Sold', 'Line Item': 'Inventory Purchases (COGS)', 'Amount': -spent },
+      { 'Schedule C Accounting': 'GROSS PROFIT', 'Line Item': '(Revenue minus COGS)', 'Amount': revenue - spent },
+      { 'Schedule C Accounting': '', 'Line Item': '', 'Amount': '' },
+      { 'Schedule C Accounting': 'Part II: Operating Expenses', 'Line Item': 'Platform Fees & Shipping', 'Amount': -fees },
+      { 'Schedule C Accounting': 'Part II: Operating Expenses', 'Line Item': 'Standard Mileage Deduction', 'Amount': -(mileage * 0.67) },
+      { 'Schedule C Accounting': 'NET INCOME (LOSS)', 'Line Item': 'Realized Profit for Period', 'Amount': (revenue - spent - fees - (mileage * 0.67)) },
+      { 'Schedule C Accounting': '', 'Line Item': '', 'Amount': '' },
+      { 'Schedule C Accounting': 'Capital Account', 'Line Item': 'Working Capital Baseline', 'Amount': budget },
+      { 'Schedule C Accounting': 'Capital Account', 'Line Item': 'Liquid Cash on Hand', 'Amount': budget - spent + revenue - fees }
     ];
     const ws = XLSX.utils.json_to_sheet(pnlData);
-    ws['!cols'] = [{wch: 25}, {wch: 35}, {wch: 15}];
-    XLSX.utils.book_append_sheet(wb, ws, 'Profit & Loss');
-    outputExcel(wb, `TrackMyFlip_PnL_Report_${today}.xlsx`, action);
+    ws['!cols'] = [{wch: 30}, {wch: 40}, {wch: 15}];
+    XLSX.utils.book_append_sheet(wb, ws, 'GAAP Profit & Loss');
+    outputExcel(wb, `GAAP_PnL_Report_${today}.xlsx`, action);
   };
 
   const handleExportPnLPDF = () => {
     let today = exportDateStr;
     const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text(`Track My Flip - P&L Report (${today})`, 14, 20);
+    doc.setFontSize(14);
+    doc.text(`GAAP Profit & Loss Statement`, 14, 20);
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Entity: ${userProfile?.companyName || 'Independent Provider'}`, 14, 27);
+    doc.text(`Date of Audit: ${today}`, 14, 32);
     
     doc.autoTable({
-       startY: 30,
-       head: [['Account Group', 'Description', 'Amount']],
+       startY: 40,
+       head: [['Accounting Group', 'Line Item', 'Amount']],
        body: [
-         ['Gross Revenue', 'Asset Sales', `$${revenue.toFixed(2)}`],
-         ['Cost of Goods Sold', 'Inventory Purchases', `-$${spent.toFixed(2)}`],
-         ['Operating Expenses', 'Platform Fees & Shipping', `-$${fees.toFixed(2)}`],
-         ['Operating Expenses', 'Standard Mileage Deduction', `-$${(mileage * 0.67).toFixed(2)}`],
-         ['Net Income (Loss)', 'Realized Profit / Loss', `$${(revenue - spent - fees - (mileage * 0.67)).toFixed(2)}`],
+         ['Part I: Gross Revenue', 'Asset Sales Receipts', `$${revenue.toFixed(2)}`],
+         ['Part III: Cost of Goods Sold', 'Inventory Purchases', `-$${spent.toFixed(2)}`],
+         ['GROSS PROFIT', '(Revenue - COGS)', `$${(revenue - spent).toFixed(2)}`],
          ['', '', ''],
-         ['Asset/Capital', 'Initial Working Capital', `$${budget.toFixed(2)}`],
-         ['Asset/Capital', 'End of Day Liquid Cash', `$${(budget - spent + revenue - fees).toFixed(2)}`]
+         ['Part II: Operating Expenses', 'Platform Fees & Shipping', `-$${fees.toFixed(2)}`],
+         ['Part II: Operating Expenses', 'Standard Mileage Deduction', `-$${(mileage * 0.67).toFixed(2)}`],
+         ['NET INCOME (LOSS)', 'Realized Return', `$${(revenue - spent - fees - (mileage * 0.67)).toFixed(2)}`],
        ]
     });
-    doc.save(`TrackMyFlip_PnL_${today}.pdf`);
+    doc.save(`GAAP_PnL_${today}.pdf`);
   };
 
   const handleExportExpenses = (action) => {
@@ -107,78 +124,85 @@ export default function BudgetTracker() {
     const wb = XLSX.utils.book_new();
     const expenseData = inventory.map(item => ({
         'Date': today,
-        'Account': 'Inventory / COGS',
+        'Tax Schedule': 'Schedule C (Part III)',
         'Payment Method': item.paymentMode || 'Cash',
-        'Category': item.cat || 'Uncategorized',
-        'Description': item.name,
-        'Amount': item.price
+        'Asset Category': item.cat || 'Misc Asset',
+        'Ledger Description': item.name,
+        'COGS Output ($)': item.price
     }));
-    if (expenseData.length === 0) expenseData.push({ 'Date': today, 'Account': '', 'Payment Method': '', 'Category': '', 'Description': 'No Expenses Logged', 'Amount': 0 });
+    if (expenseData.length === 0) expenseData.push({ 'Date': today, 'Tax Schedule': '', 'Payment Method': '', 'Asset Category': '', 'Ledger Description': 'No Inventory Logged', 'COGS Output ($)': 0 });
     const ws = XLSX.utils.json_to_sheet(expenseData);
-    ws['!cols'] = [{wch: 15}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 35}, {wch: 12}];
-    XLSX.utils.book_append_sheet(wb, ws, 'Itemized Expenses');
-    outputExcel(wb, `TrackMyFlip_Expense_Report_${today}.xlsx`, action);
+    ws['!cols'] = [{wch: 15}, {wch: 25}, {wch: 20}, {wch: 20}, {wch: 35}, {wch: 15}];
+    XLSX.utils.book_append_sheet(wb, ws, 'COGS Ledger');
+    outputExcel(wb, `COGS_Ledger_${today}.xlsx`, action);
   };
 
   const handleExportExpensesPDF = () => {
     let today = exportDateStr;
     const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text(`Track My Flip - Itemized Expenses (${today})`, 14, 20);
+    doc.setFontSize(14);
+    doc.text(`Schedule C (Part III) - Cost of Goods Sold`, 14, 20);
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Entity: ${userProfile?.companyName || 'Independent Provider'} | Prepared: ${today}`, 14, 28);
 
     const expenseData = inventory.map(item => [
         today,
         item.paymentMode || 'Cash',
-        item.cat || 'Uncategorized',
+        item.cat || 'Misc',
         item.name,
         `$${item.price.toFixed(2)}`
     ]);
 
     doc.autoTable({
-       startY: 30,
-       head: [['Date', 'Payment', 'Category', 'Description', 'Amount']],
-       body: expenseData.length > 0 ? expenseData : [['No Expenses Logged', '', '', '', '']]
+       startY: 35,
+       head: [['Date', 'Payment', 'Asset Category', 'Ledger Description', 'COGS Output ($)']],
+       body: expenseData.length > 0 ? expenseData : [['No COGS Logged for Period', '', '', '', '']]
     });
-    doc.save(`TrackMyFlip_Expenses_${today}.pdf`);
+    doc.save(`COGS_Ledger_${today}.pdf`);
   };
 
   const handleExportRouteLog = (action) => {
     let today = exportDateStr;
     const wb = XLSX.utils.book_new();
     const routeData = stops.map((s, idx) => ({
-        'Stop #': idx + 1,
+        'Date': today,
+        'Odo Start': startOdo ? startOdo : 'N/A',
+        'Odo End': endOdo ? endOdo : 'N/A',
         'Time Logged': s.time,
-        'Location Address': s.address,
-        'Target Asset Class': s.items,
-        'Status': s.status ? s.status.toUpperCase() : 'PENDING'
+        'Location Stop': s.address,
+        'Business Purpose': 'Inventory Sourcing & Procurement',
     }));
-    if (routeData.length === 0) routeData.push({ 'Stop #': 1, 'Time Logged': '', 'Location Address': 'No Stops Logged', 'Target Asset Class': '', 'Status': '' });
+    if (routeData.length === 0) routeData.push({ 'Date': today, 'Odo Start': '', 'Odo End': '', 'Time Logged': '', 'Location Stop': 'No Stops Logged', 'Business Purpose': '' });
     const ws = XLSX.utils.json_to_sheet(routeData);
-    ws['!cols'] = [{wch: 10}, {wch: 15}, {wch: 40}, {wch: 25}, {wch: 15}];
-    XLSX.utils.book_append_sheet(wb, ws, 'Route Log');
-    outputExcel(wb, `TrackMyFlip_Route_Log_${today}.xlsx`, action);
+    ws['!cols'] = [{wch: 15}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 40}, {wch: 35}];
+    XLSX.utils.book_append_sheet(wb, ws, 'IRS Mileage Log');
+    outputExcel(wb, `IRS_Mileage_Log_${today}.xlsx`, action);
   };
 
   const handleExportRouteLogPDF = () => {
     let today = exportDateStr;
     const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text(`Track My Flip - Route Log (${today})`, 14, 20);
+    doc.setFontSize(14);
+    doc.text(`Contemporaneous IRS Mileage Log`, 14, 20);
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Entity: ${userProfile?.companyName || 'Independent Provider'} | Prepared: ${today}`, 14, 28);
+    doc.text(`Total Commute: ${startOdo && endOdo ? `${startOdo} -> ${endOdo}` : 'Standard Deduction Log'} (${mileage} Total Mi)`, 14, 34);
 
     const routeData = stops.map((s, idx) => [
-        idx + 1,
+        today,
         s.time,
         s.address || 'N/A',
-        s.items || 'N/A',
-        s.status ? s.status.toUpperCase() : 'PENDING'
+        'Inventory Sourcing & Procurement'
     ]);
 
     doc.autoTable({
-       startY: 30,
-       head: [['#', 'Time', 'Address', 'Asset Class', 'Status']],
-       body: routeData.length > 0 ? routeData : [['No Stops Logged', '', '', '', '']]
+       startY: 42,
+       head: [['Date', 'Time Logged', 'Stop Location Address', 'IRS Business Purpose']],
+       body: routeData.length > 0 ? routeData : [['No Stops Logged', '', '', '']]
     });
-    doc.save(`TrackMyFlip_RouteLog_${today}.pdf`);
+    doc.save(`IRS_Mileage_Log_${today}.pdf`);
   };
 
   const handleExportMaster = (action) => {
@@ -187,25 +211,21 @@ export default function BudgetTracker() {
 
     // SHEET 1: Executive Summary & KPIs
     const execData = [
-      { 'Metric Category': 'Audit Information', 'Metric Details': 'Date of Audit', 'Recorded Value': today },
-      { 'Metric Category': '', 'Metric Details': 'Generated System', 'Recorded Value': 'TrackMyFlip Pro' },
+      { 'Metric Category': 'Audit Entity Header', 'Metric Details': 'Filing Entity Name', 'Recorded Value': userProfile?.companyName || 'Unregistered Provider' },
+      { 'Metric Category': '', 'Metric Details': 'Filing Office Address', 'Recorded Value': userProfile?.address || 'N/A' },
+      { 'Metric Category': '', 'Metric Details': 'Entity Contact', 'Recorded Value': userProfile?.email || 'N/A' },
+      { 'Metric Category': '', 'Metric Details': 'Date of Audit', 'Recorded Value': today },
       { 'Metric Category': '', 'Metric Details': '', 'Recorded Value': null },
-      { 'Metric Category': 'Capital Allocation', 'Metric Details': 'Initial Sourcing Budget', 'Recorded Value': `$${budget.toFixed(2)}` },
-      { 'Metric Category': '', 'Metric Details': 'Total Cost of Goods Sold (COGS)', 'Recorded Value': `-$${spent.toFixed(2)}` },
-      { 'Metric Category': '', 'Metric Details': 'Gross Final Revenue', 'Recorded Value': `+$${revenue.toFixed(2)}` },
-      { 'Metric Category': '', 'Metric Details': 'Platform Fees / Overheads', 'Recorded Value': `-$${fees.toFixed(2)}` },
-      { 'Metric Category': '', 'Metric Details': 'Liquid Cash on Hand', 'Recorded Value': `$${(budget - spent + revenue - fees).toFixed(2)}` },
+      { 'Metric Category': 'Part I: Revenue', 'Metric Details': 'Gross Final Revenue', 'Recorded Value': `+$${revenue.toFixed(2)}` },
+      { 'Metric Category': 'Part III: COGS', 'Metric Details': 'Total Cost of Goods Sold', 'Recorded Value': `-$${spent.toFixed(2)}` },
+      { 'Metric Category': 'GROSS PROFIT', 'Metric Details': '(Revenue - COGS)', 'Recorded Value': `$${(revenue - spent).toFixed(2)}` },
       { 'Metric Category': '', 'Metric Details': '', 'Recorded Value': null },
-      { 'Metric Category': 'Tax Deductions (OpEx)', 'Metric Details': 'IRS Standard Mileage (67c/mi)', 'Recorded Value': `-$${(mileage * 0.67).toFixed(2)}` },
-      { 'Metric Category': '', 'Metric Details': 'Realized Net Income / Deficit', 'Recorded Value': `${(revenue - spent - fees - (mileage * 0.67)) >= 0 ? '+' : '-'}$${Math.abs(revenue - spent - fees - (mileage * 0.67)).toFixed(2)}` },
-      { 'Metric Category': '', 'Metric Details': '', 'Recorded Value': null },
-      { 'Metric Category': 'Performance KPIs', 'Metric Details': 'Total Assets Acquired', 'Recorded Value': inventory.length },
-      { 'Metric Category': '', 'Metric Details': 'Assets Liquidated (Sold)', 'Recorded Value': inventory.filter(i => i.status === 'sold').length },
-      { 'Metric Category': '', 'Metric Details': 'Average Cost per Asset Acquired', 'Recorded Value': inventory.length ? `$${(spent / inventory.length).toFixed(2)}` : '$0.00' },
-      { 'Metric Category': '', 'Metric Details': 'Average Sourcing Cost per Stop Hit', 'Recorded Value': stops.length > 0 ? `$${(spent / stops.length).toFixed(2)}` : '$0.00' },
+      { 'Metric Category': 'Part II: OpEx', 'Metric Details': 'Platform Fees / Overheads', 'Recorded Value': `-$${fees.toFixed(2)}` },
+      { 'Metric Category': 'Part II: OpEx', 'Metric Details': 'IRS Standard Mileage (67c/mi)', 'Recorded Value': `-$${(mileage * 0.67).toFixed(2)}` },
+      { 'Metric Category': 'NET INCOME', 'Metric Details': 'Realized Net Profit / Deficit', 'Recorded Value': `${(revenue - spent - fees - (mileage * 0.67)) >= 0 ? '+' : '-'}$${Math.abs(revenue - spent - fees - (mileage * 0.67)).toFixed(2)}` },
     ];
     const wsExec = XLSX.utils.json_to_sheet(execData);
-    wsExec['!cols'] = [{wch: 25}, {wch: 35}, {wch: 20}];
+    wsExec['!cols'] = [{wch: 30}, {wch: 35}, {wch: 25}];
 
     // SHEET 2: Master Inventory (COGS) Ledger
     const invData = inventory.map((item, idx) => ({
@@ -215,110 +235,83 @@ export default function BudgetTracker() {
       'Asset Category': item.cat || 'Misc / Uncategorized',
       'Asset Description': item.name,
       'Accounting Group': 'Cost of Goods Sold',
-      'Purchase Amount': item.price
+      'Purchase Amount ($)': item.price
     }));
-    if (invData.length === 0) invData.push({ 'Log ID': '', 'Date of Acquisition': '', 'Payment Method': '', 'Asset Category': '', 'Asset Description': 'No Inventory Logged', 'Accounting Group': '', 'Purchase Amount': 0});
+    if (invData.length === 0) invData.push({ 'Log ID': '', 'Date of Acquisition': '', 'Payment Method': '', 'Asset Category': '', 'Asset Description': 'No Inventory Logged', 'Accounting Group': '', 'Purchase Amount ($)': 0});
     const wsInv = XLSX.utils.json_to_sheet(invData);
     wsInv['!cols'] = [{wch: 20}, {wch: 18}, {wch: 15}, {wch: 25}, {wch: 40}, {wch: 25}, {wch: 15}];
 
     // SHEET 3: IRS Compliant Route & Mileage Log
     const routeData = [
-      { 'Log Context': 'Vehicle Record', 'Entry Description': 'Odometer Start', 'Data Value': startOdo ? `${startOdo}` : 'Not Logged' },
-      { 'Log Context': 'Vehicle Record', 'Entry Description': 'Odometer End', 'Data Value': endOdo ? `${endOdo}` : 'Not Logged' },
-      { 'Log Context': 'Vehicle Record', 'Entry Description': 'Manual Miles Driven', 'Data Value': `${rawMileage} mi` },
-      { 'Log Context': 'Vehicle Record', 'Entry Description': 'Auto (MileIQ) Miles', 'Data Value': `${autoMileage.toFixed(1)} mi` },
-      { 'Log Context': 'Vehicle Record', 'Entry Description': 'Total Deductible Miles', 'Data Value': `${mileage.toFixed(1)} mi` },
-      { 'Log Context': 'Tax Data', 'Entry Description': 'Business Purpose', 'Data Value': 'Inventory Sourcing & Procurement' },
-      { 'Log Context': '', 'Entry Description': '', 'Data Value': null },
-      { 'Log Context': '==== ROUTE STOPS ====', 'Entry Description': '==== LOCATION ADDRESS ====', 'Data Value': '==== OUTCOME ====' }
+      { 'Audit Log Context': 'Vehicle Ledger', 'Description': 'Odometer Start', 'Data Payload': startOdo ? `${startOdo}` : 'N/A' },
+      { 'Audit Log Context': 'Vehicle Ledger', 'Description': 'Odometer End', 'Data Payload': endOdo ? `${endOdo}` : 'N/A' },
+      { 'Audit Log Context': 'Vehicle Ledger', 'Description': 'Total Deductible Miles', 'Data Payload': `${mileage.toFixed(1)} mi` },
+      { 'Audit Log Context': 'Tax Parameter', 'Description': 'Business Purpose', 'Data Payload': 'Inventory Sourcing & Procurement' },
+      { 'Audit Log Context': '', 'Description': '', 'Data Payload': null },
+      { 'Audit Log Context': '==== ROUTE STOPS ====', 'Description': '==== STOP ADDRESS ====', 'Data Payload': '==== AUDIT OUTCOME ====' }
     ];
     stops.forEach((s, idx) => {
       routeData.push({
-        'Log Context': `Stop #${idx + 1} (${s.time})`,
-        'Entry Description': s.address,
-        'Data Value': s.status ? s.status.toUpperCase() : 'PENDING'
+        'Audit Log Context': `Stop #${idx + 1} (${s.time})`,
+        'Description': s.address,
+        'Data Payload': s.status ? s.status.toUpperCase() : 'PENDING'
       });
     });
-    if (stops.length === 0) routeData.push({ 'Log Context': 'No Stops', 'Entry Description': '', 'Data Value': ''});
+    if (stops.length === 0) routeData.push({ 'Audit Log Context': 'No Stops Recorded for Period', 'Description': '', 'Data Payload': ''});
     
     const wsRoute = XLSX.utils.json_to_sheet(routeData);
-    wsRoute['!cols'] = [{wch: 25}, {wch: 50}, {wch: 20}];
+    wsRoute['!cols'] = [{wch: 30}, {wch: 50}, {wch: 25}];
 
     // Compile
     XLSX.utils.book_append_sheet(wb, wsExec, 'Executive Summary');
-    XLSX.utils.book_append_sheet(wb, wsInv, 'Inventory COGS Ledger');
-    XLSX.utils.book_append_sheet(wb, wsRoute, 'IRS Route Compliance');
+    XLSX.utils.book_append_sheet(wb, wsInv, 'COGS Ledger');
+    XLSX.utils.book_append_sheet(wb, wsRoute, 'Contemporaneous Mileage Log');
 
-    outputExcel(wb, `TrackMyFlip_CompleteMasterAudit_${today}.xlsx`, action);
+    outputExcel(wb, `GAAP_Company_Master_Audit_${today}.xlsx`, action);
   };
 
   const handleExportMasterPDF = () => {
-    const today = selectedDate === 'live' ? new Date().toISOString().split('T')[0] : 
-      new Date(history.find(h => h.id.toString() === selectedDate).date).toISOString().split('T')[0];
-
+    let today = exportDateStr;
     const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.text('Track My Flip - Master Audit Log', 14, 22);
-    doc.setFontSize(11);
+    doc.setFontSize(16);
+    doc.text('Master Financial Audit Log', 14, 22);
+    doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text(`Date: ${today}`, 14, 30);
+    doc.text(`Entity Profile: ${userProfile?.companyName || 'Independent Provider'}`, 14, 30);
+    doc.text(`Filing Address: ${userProfile?.address || 'N/A'}`, 14, 35);
+    doc.text(`Date of Audit: ${today}`, 14, 40);
     
     doc.autoTable({
-       startY: 40,
-       head: [['Executive Summary', 'Value']],
+       startY: 48,
+       head: [['GAAP Executive Summary', 'Assessed Value']],
        body: [
-         ['Total Revenue', `$${revenue.toFixed(2)}`],
-         ['Total Spent / COGS', `$${spent.toFixed(2)}`],
-         ['Platform Fees', `$${fees.toFixed(2)}`],
-         ['Total Deductible Mileage', `${Number(mileage).toFixed(1)} mi`],
-         ['Net Profit / Loss', `$${(revenue - spent - fees - (Number(mileage) * 0.67)).toFixed(2)}`]
+         ['Part I: Gross Revenue', `$${revenue.toFixed(2)}`],
+         ['Part III: Cost of Goods Sold', `-$${spent.toFixed(2)}`],
+         ['GROSS PROFIT', `$${(revenue - spent).toFixed(2)}`],
+         ['Part II: Platform Overheads', `-$${fees.toFixed(2)}`],
+         ['Part II: Authorized Deductible Mileage', `-$${(Number(mileage) * 0.67).toFixed(2)}`],
+         ['NET INCOME (Operating Profit/Loss)', `$${(revenue - spent - fees - (Number(mileage) * 0.67)).toFixed(2)}`]
        ]
     });
 
-    const finalY = doc.lastAutoTable.finalY;
+    const finalY = doc.lastAutoTable.finalY || 100;
     
-    doc.text('Inventory Ledger', 14, finalY + 15);
+    doc.text('Schedule C - Cost of Goods Sold (Part III)', 14, finalY + 15);
     const invData = inventory.map(item => [
       item.name, 
-      item.status.toUpperCase(), 
       `$${item.price.toFixed(2)}`, 
+      item.status === 'sold' ? 'LIQUIDATED' : 'HOLDING', 
       item.status === 'sold' ? `$${item.soldPrice?.toFixed(2) || 0}` : '-',
       item.status === 'sold' ? `$${((item.soldPrice||0) - (item.platformFees||0) - item.price).toFixed(2)}` : '-'
     ]);
 
     doc.autoTable({
        startY: finalY + 20,
-       head: [['Item Name', 'Status', 'Cost', 'Sold For', 'Net Profit']],
-       body: invData
+       head: [['Asset Description', 'COGS Debit', 'Status', 'Revenue Event', 'Net Yield']],
+       body: invData.length > 0 ? invData : [['No Inventory Sourced', '', '', '', '']]
     });
 
-    const finalY2 = doc.lastAutoTable.finalY || finalY + 20;
-
-    doc.text('Routing & Tracking Logs', 14, finalY2 + 15);
-    const routeData = stops.map(stop => [
-      stop.time,
-      "STOP",
-      stop.address || stop.type,
-      stop.status.toUpperCase()
-    ]);
-    
-    // Add Auto Drives to routing log
-    currentDrives.forEach(drive => {
-        routeData.push([
-            new Date(drive.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-            "DRIVE",
-            `${Number(drive.distanceMiles).toFixed(1)} miles`,
-            drive.purpose.toUpperCase()
-        ]);
-    });
-
-    doc.autoTable({
-       startY: finalY2 + 20,
-       head: [['Time', 'Event', 'Details', 'Status']],
-       body: routeData
-    });
-
-    doc.save(`TrackMyFlip_Audit_${today}.pdf`);
+    doc.save(`GAAP_Master_Audit_${today}.pdf`);
   };
 
   return (
@@ -329,10 +322,58 @@ export default function BudgetTracker() {
           <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Analytics & Reports</h2>
           <p style={{ margin: 0, fontSize: '0.875rem' }}>Complete tax audit logs</p>
         </div>
-        <button className="btn" onClick={resetDay} style={{ padding: '0.5rem', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger-color)', borderRadius: '50%' }} title="Start Fresh Day">
-          <RotateCcw size={22} />
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button onClick={() => setShowProfileConfig(!showProfileConfig)} className="btn" style={{ padding: '0.5rem', background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px' }} title="Edit Tax Profile">
+            <Receipt size={22} className="text-secondary" />
+          </button>
+          <button className="btn" onClick={resetDay} style={{ padding: '0.5rem', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger-color)', borderRadius: '12px' }} title="Start Fresh Day">
+            <RotateCcw size={22} />
+          </button>
+        </div>
       </div>
+
+      {showProfileConfig && (
+        <div className="card glass" style={{ marginBottom: '1.5rem', border: '1px solid var(--border-color)', padding: '1rem' }}>
+          <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '1rem', letterSpacing: '0.5px' }}>Tax Profile Configuration</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Company/Business Name</label>
+                  <input 
+                    type="text" name="companyName" value={userProfile?.companyName || ''} onChange={handleProfileChange}
+                    className="input-field" placeholder="e.g. My Reselling Business LLC"
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.85rem', background: '#fff' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Address</label>
+                  <input 
+                    type="text" name="address" value={userProfile?.address || ''} onChange={handleProfileChange}
+                    className="input-field" placeholder="123 Main St, City, ST 12345"
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.85rem', background: '#fff' }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Contact #</label>
+                    <input 
+                      type="tel" name="phone" value={userProfile?.phone || ''} onChange={handleProfileChange}
+                      className="input-field" placeholder="(555) 123-4567"
+                      style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.85rem', background: '#fff' }}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Email</label>
+                    <input 
+                      type="email" name="email" value={userProfile?.email || ''} onChange={handleProfileChange}
+                      className="input-field" placeholder="contact@email.com"
+                      style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.85rem', background: '#fff' }}
+                    />
+                  </div>
+                </div>
+                <button className="btn btn-primary" onClick={() => setShowProfileConfig(false)} style={{ width: '100%', padding: '0.5rem', marginTop: '0.5rem' }}>Save Tax Profile</button>
+            </div>
+        </div>
+      )}
 
       <div style={{ marginBottom: '1.5rem' }}>
         <select 

@@ -1,10 +1,10 @@
 import React, { useState, useRef } from 'react';
-import { Camera, Package, Plus, X, Maximize, ArrowUp, ArrowDown, Receipt } from 'lucide-react';
+import { Camera, Package, Plus, X, Maximize, ArrowUp, ArrowDown, Receipt, RotateCcw } from 'lucide-react';
 import Tesseract from 'tesseract.js';
 import { useAppContext } from '../context/AppContext';
 
 export default function InventoryManager() {
-  const { isPro, isTrialing, inventory, addInventoryItem, updateInventoryItem, stops, budget, setBudget, spent, revenue, fees } = useAppContext();
+  const { isPro, isTrialing, inventory, addInventoryItem, updateInventoryItem, stops, budget, setBudget, spent, revenue, fees, resetDay } = useAppContext();
   const [isAdding, setIsAdding] = useState(false);
   const [activeItem, setActiveItem] = useState(null);
   const [soldPrice, setSoldPrice] = useState('');
@@ -353,10 +353,15 @@ export default function InventoryManager() {
           <p style={{ margin: 0, fontSize: '0.875rem' }}>Your active hauls ({inventory.length})</p>
         </div>
         
-        <input type="file" ref={gridCameraRef} accept="image/*" capture="environment" style={{display: 'none'}} onChange={handleNativeCamera} />
-        <button className="btn btn-primary" onClick={() => gridCameraRef.current.click()} style={{ padding: '0.5rem', borderRadius: '50%', boxShadow: '0 4px 14px var(--accent-glow)' }}>
-          <Camera size={24} />
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button className="btn" onClick={resetDay} style={{ padding: '0.5rem', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger-color)', borderRadius: '50%' }} title="Start Fresh Day">
+              <RotateCcw size={22} />
+            </button>
+            <input type="file" ref={gridCameraRef} accept="image/*" capture="environment" style={{display: 'none'}} onChange={handleNativeCamera} />
+            <button className="btn btn-primary" onClick={() => gridCameraRef.current.click()} style={{ padding: '0.5rem', borderRadius: '50%', boxShadow: '0 4px 14px var(--accent-glow)' }}>
+              <Camera size={22} />
+            </button>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
