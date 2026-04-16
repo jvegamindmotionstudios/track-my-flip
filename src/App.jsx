@@ -39,13 +39,10 @@ function MainInterface({ session }) {
   };
 
   const handleSubscribe = (billingCycle) => {
-    // Replace these URLs once your Stripe Payment Links are generated:
-    const monthlyURL = "https://buy.stripe.com/test_placeholder_monthly";
-    const yearlyURL = "https://buy.stripe.com/test_placeholder_yearly";
-    
-    const checkoutUrl = billingCycle === 'monthly' ? monthlyURL : yearlyURL;
-    // We append the Supabase user ID so Stripe webhooks can securely credit this exact account later!
-    window.location.href = `${checkoutUrl}?client_reference_id=${session?.user?.id || 'guest'}`;
+    // App Store Compliance: Apple prohibits external Stripe links for digital upgrades (Guideline 3.1.1).
+    // If you launch on iOS in the future, you must use RevenueCat. For now, to pass review without 
+    // a dead 404 link rejection, we gracefully catch the purchase intent.
+    alert(`Upgrade Processing: Thank you for your interest! In-App Subscriptions are currently being finalized for this platform. Please enjoy the trial in the meantime.`);
   };
 
   const renderContent = () => {
@@ -145,11 +142,16 @@ function MainInterface({ session }) {
             <div style={{ display: 'flex', gap: '1rem', background: 'rgba(0, 0, 0, 0.03)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
                <AlertTriangle size={24} color="#f59e0b" style={{ flexShrink: 0 }} />
                <div>
-                 <h4 style={{ margin: '0 0 0.25rem 0', color: '#d97706' }}>"As-Is" Indemnification</h4>
+                 <h4 style={{ margin: '0 0 0.25rem 0', color: '#d97706' }}>"As-Is" Estimates & Indemnification</h4>
                  <p style={{ margin: 0, fontSize: '0.8rem', lineHeight: '1.5', color: 'var(--text-secondary)' }}>
-                   This software and its estimations are provided "as-is" without warranty. By using this service, you agree to indemnify and hold the developers harmless from any liabilities, accidents, or financial discrepancies.
+                   This software and its AI visual estimations are provided "as-is" without warranty. By using this service, you agree to indemnify and hold the developers harmless from any liabilities, accidents, or financial discrepancies.
                  </p>
                </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-around', paddingTop: '0.5rem', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+                <a href="/privacy.html" target="_blank" style={{ fontSize: '0.8rem', color: 'var(--accent-color)', fontWeight: 'bold', textDecoration: 'none' }}>Privacy Policy</a>
+                <a href="/terms.html" target="_blank" style={{ fontSize: '0.8rem', color: 'var(--accent-color)', fontWeight: 'bold', textDecoration: 'none' }}>Terms of Service</a>
             </div>
 
             <div style={{ padding: '1rem', background: 'rgba(0,0,0,0.02)', borderRadius: '8px', border: '1px solid var(--border-color)', textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>

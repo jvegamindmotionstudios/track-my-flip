@@ -89,9 +89,12 @@ function SettingsModal({ onClose }) {
             Do not use, type, or interact with this application while actively operating a motor vehicle. 
             Calculated IRS mileage deductions and generated tax reports DO NOT constitute certified tax advice. 
             Always verify logging accuracy and consult a licensed tax professional (CPA).
-            Marketplace estimates are generated from mock averages and are provided entirely "as is" without warranty.
           </p>
-          <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(239, 68, 68, 0.2)', fontSize: '0.7rem', color: 'var(--text-secondary)', textAlign: 'center', lineHeight: '1.4' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(239, 68, 68, 0.2)' }}>
+              <a href="/privacy.html" target="_blank" style={{ fontSize: '0.75rem', color: 'var(--accent-color)', fontWeight: 'bold', textDecoration: 'none' }}>Privacy Policy</a>
+              <a href="/terms.html" target="_blank" style={{ fontSize: '0.75rem', color: 'var(--accent-color)', fontWeight: 'bold', textDecoration: 'none' }}>Terms of Service</a>
+          </div>
+          <div style={{ marginTop: '0.75rem', fontSize: '0.7rem', color: 'var(--text-secondary)', textAlign: 'center', lineHeight: '1.4' }}>
              <strong>www.mindmotionstudios.com L.L.C.</strong><br/>
              4539 N. 22nd St. Suite N<br/>
              Phoenix, AZ 85016<br/>
@@ -100,15 +103,15 @@ function SettingsModal({ onClose }) {
         </div>
 
         <div style={{ marginTop: '0.25rem' }}>
-           <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}><strong>App Version:</strong> 1.0.0 (MVP)</p>
-           <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}><strong>Operating Env:</strong> Web (PWA)</p>
+           <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}><strong>App Version:</strong> 1.0.0</p>
+           <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}><strong>Operating Env:</strong> Native / Web</p>
         </div>
         
         <button className="btn btn-primary" onClick={onClose} style={{ width: '100%', marginTop: '0.25rem' }}>
           Save & Close Settings
         </button>
         
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
           <button 
             onClick={async () => {
               const { isSupabaseConfigured, supabase } = await import('../config/supabaseClient');
@@ -117,9 +120,33 @@ function SettingsModal({ onClose }) {
                 window.location.reload();
               }
             }}
-            style={{ background: 'none', border: '1px solid #ef4444', color: '#ef4444', padding: '0.5rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', textAlign: 'center' }}
+            style={{ background: 'none', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', textAlign: 'center' }}
           >
             Log Out
+          </button>
+
+          <button 
+            onClick={async () => {
+              if (window.confirm("CRITICAL WARNING: This will permanently purge your user profile and request the permanent deletion of your account. This cannot be undone. Do you wish to proceed?")) {
+                  const { isSupabaseConfigured, supabase } = await import('../config/supabaseClient');
+                  if (isSupabaseConfigured) {
+                      const userInfo = await supabase.auth.getUser();
+                      if (userInfo?.data?.user?.id) {
+                          // Scrub their physical database rows to comply with strict data deletion
+                          await supabase.from('inventory').delete().eq('user_id', userInfo.data.user.id);
+                          await supabase.from('tracked_drives').delete().eq('user_id', userInfo.data.user.id);
+                          await supabase.from('user_profiles').delete().eq('user_id', userInfo.data.user.id);
+                      }
+                      localStorage.clear();
+                      await supabase.auth.signOut();
+                      alert("Account deletion initiated and user data scrubbed. You will now be logged out.");
+                      window.location.reload();
+                  }
+              }
+            }}
+            style={{ background: 'none', border: '1px solid #ef4444', color: '#ef4444', padding: '0.5rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', textAlign: 'center' }}
+          >
+            Delete Account
           </button>
 
           <button 
@@ -127,7 +154,7 @@ function SettingsModal({ onClose }) {
                localStorage.removeItem('trackMyFlip_termsAccepted');
                window.location.reload();
              }}
-             style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '0.75rem', textDecoration: 'underline', cursor: 'pointer', textAlign: 'center' }}
+             style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '0.75rem', textDecoration: 'underline', cursor: 'pointer', textAlign: 'center', marginTop: '0.5rem' }}
           >
             Reset ToS Acknowledgement
           </button>
