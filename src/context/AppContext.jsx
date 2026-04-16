@@ -362,6 +362,15 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  const clearDrives = async () => {
+    if (window.confirm("WARNING: Are you sure you want to permanently clear your mileage history?\n\nPlease make sure you have downloaded your IRS Log first! This cannot be undone.")) {
+      setTrackedDrives([]);
+      if (user && isSupabaseConfigured) {
+        await supabase.from('tracked_drives').delete().eq('user_id', user.id);
+      }
+    }
+  };
+
   const spent = inventory.reduce((total, item) => total + (Number(item.price) || 0), 0);
   const revenue = inventory.reduce((total, item) => total + (item.status === 'sold' ? (Number(item.soldPrice) || 0) : 0), 0);
   const fees = inventory.reduce((total, item) => total + (item.status === 'sold' ? (Number(item.platformFees) || 0) : 0), 0);
@@ -379,7 +388,7 @@ export const AppProvider = ({ children }) => {
       isDriveTracking, setIsDriveTracking,
       trackedDrives, setTrackedDrives,
       activeDrive, setActiveDrive,
-      classifyDrive,
+      classifyDrive, clearDrives,
       pendingDrivePrompt, setPendingDrivePrompt,
       resetDay, clearRoute,
       userProfile, setUserProfile,

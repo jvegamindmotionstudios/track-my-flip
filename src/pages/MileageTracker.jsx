@@ -27,7 +27,7 @@ const MapBounds = ({ path }) => {
 };
 
 const MileageTracker = () => {
-   const { isPro, isTrialing, isDriveTracking, setIsDriveTracking, trackedDrives, classifyDrive, setTrackedDrives, activeDrive } = useAppContext();
+   const { isPro, isTrialing, isDriveTracking, setIsDriveTracking, trackedDrives, classifyDrive, setTrackedDrives, activeDrive, clearDrives } = useAppContext();
    const [viewingMapPath, setViewingMapPath] = useState(null);
 
    const toggleTracking = () => {
@@ -107,7 +107,8 @@ const MileageTracker = () => {
        </div>
 
        {/* Sub actions */}
-       <div style={{ display: 'flex', justifyContent: 'flex-end', paddingRight: '0.25rem' }}>
+       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 0.25rem' }}>
+           <button className="btn" onClick={clearDrives} style={{ fontSize: '0.75rem', padding: '0.4rem 0.75rem', background: 'transparent', color: 'var(--danger-color)', border: '1px dashed var(--danger-color)' }}>Clear History</button>
            <button className="btn" onClick={exportLog} style={{ fontSize: '0.8rem', background: 'rgba(0,0,0,0.03)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}><Download size={14}/> Download IRS Log</button>
        </div>
 
