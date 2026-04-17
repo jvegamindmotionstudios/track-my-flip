@@ -303,8 +303,8 @@ export default function PriceEstimator() {
               </div>
               
               <div style={{ background: 'var(--bg-primary)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                <p className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', margin: '0 0 0.75rem 0' }}>Top Found Matches</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <p className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', margin: '0 0 0.75rem 0' }}>Top eBay Matches</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
                   {estimateData?.items && estimateData.items.length > 0 ? (
                      estimateData.items.slice(0, 3).map((item, idx) => (
                         <a 
@@ -313,23 +313,48 @@ export default function PriceEstimator() {
                           target="_blank" 
                           rel="noopener noreferrer"
                           className="btn" 
-                          style={{ justifyContent: 'space-between', background: 'rgba(0, 100, 210, 0.08)', borderColor: 'rgba(0, 100, 210, 0.2)', color: '#0064d2', fontSize: '0.85rem', padding: '0.75rem 1rem', display: 'flex', gap: '1rem' }}
+                          style={{ justifyContent: 'space-between', background: 'rgba(0, 100, 210, 0.08)', borderColor: 'rgba(0, 100, 210, 0.2)', color: '#0064d2', fontSize: '0.85rem', padding: '0.6rem 1rem', display: 'flex', gap: '1rem' }}
                         >
-                          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>{item.title}</span> 
+                          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }}>{item.title}</span> 
                           <span style={{ fontWeight: 800 }}>${parseFloat(item.price).toFixed(2)}</span>
                         </a>
                      ))
                   ) : (
+                      <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>No direct matches available for preview.</p>
+                  )}
+                </div>
+
+                <div style={{ width: '100%', height: '1px', background: 'var(--border-color)', marginBottom: '1rem' }}></div>
+
+                <p className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', margin: '0 0 0.75rem 0' }}>Cross-Check Markets</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     <a 
                       href={`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(estimationQuery === 'Visual Item Photo' ? '' : estimationQuery)}`} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="btn" 
-                      style={{ justifyContent: 'space-between', background: 'rgba(0, 100, 210, 0.08)', borderColor: 'rgba(0, 100, 210, 0.2)', color: '#0064d2', fontSize: '0.9rem', padding: '0.75rem 1rem' }}
+                      style={{ justifyContent: 'space-between', background: 'rgba(0, 100, 210, 0.08)', borderColor: 'rgba(0, 100, 210, 0.2)', color: '#0064d2', fontSize: '0.85rem', padding: '0.6rem 1rem' }}
                     >
-                      Open Live eBay Search <ExternalLink size={16} />
+                      Search eBay <ExternalLink size={14} />
                     </a>
-                  )}
+                    <a 
+                      href={`https://www.mercari.com/search/?keyword=${encodeURIComponent(estimationQuery === 'Visual Item Photo' ? '' : estimationQuery)}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="btn" 
+                      style={{ justifyContent: 'space-between', background: 'rgba(110, 52, 235, 0.08)', borderColor: 'rgba(110, 52, 235, 0.2)', color: '#6e34eb', fontSize: '0.85rem', padding: '0.6rem 1rem' }}
+                    >
+                      Search Mercari <ExternalLink size={14} />
+                    </a>
+                    <a 
+                      href={`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(estimationQuery === 'Visual Item Photo' ? '' : estimationQuery)}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="btn" 
+                      style={{ justifyContent: 'space-between', background: 'rgba(234, 67, 53, 0.08)', borderColor: 'rgba(234, 67, 53, 0.2)', color: '#ea4335', fontSize: '0.85rem', padding: '0.6rem 1rem' }}
+                    >
+                      Google Shopping <ExternalLink size={14} />
+                    </a>
                 </div>
               </div>
             </div>
