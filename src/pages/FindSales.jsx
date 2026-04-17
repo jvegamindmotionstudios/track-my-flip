@@ -231,6 +231,10 @@ export default function FindSales() {
       }
 
       setSales([...osmResults, ...activeYardSales]);
+      
+      if (activeYardSales.length > 0 || osmResults.length > 0) {
+          if ('vibrate' in navigator) navigator.vibrate(500);
+      }
   };
 
   const scanArea = async () => {
@@ -389,10 +393,17 @@ export default function FindSales() {
         overflow: 'hidden', marginBottom: '1rem', border: '1px solid var(--border-color)', position: 'relative'
       }}>
         {showSearchHere && (
-             <div style={{ position: 'absolute', top: '15px', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, animation: 'fadeIn 0.2s ease-out' }}>
+             <div style={{ position: 'absolute', bottom: '25px', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, animation: 'fadeIn 0.2s ease-out' }}>
                  <button onClick={searchThisArea} className="btn" style={{ background: '#fff', color: 'var(--accent-color)', borderRadius: '24px', padding: '0.5rem 1.5rem', fontWeight: 'bold', boxShadow: '0 4px 15px rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Search size={16} /> Search this area
                  </button>
+             </div>
+        )}
+        {isLocating && (
+             <div style={{ position: 'absolute', inset: 0, zIndex: 9999, background: 'rgba(255,255,255,0.7)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(3px)' }}>
+                 <Loader2 size={48} className="text-accent" style={{ animation: 'spin 1s linear infinite', marginBottom: '1rem' }} />
+                 <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>Scanning Active Networks...</h3>
+                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>This can take up to 30 seconds for deep live scrapes.</p>
              </div>
         )}
         <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%', zIndex: 1 }} zoomControl={false}>
