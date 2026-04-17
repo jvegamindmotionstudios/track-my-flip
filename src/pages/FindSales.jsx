@@ -406,7 +406,7 @@ export default function FindSales() {
                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>This can take up to 30 seconds for deep live scrapes.</p>
              </div>
         )}
-        <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%', zIndex: 1 }} zoomControl={false}>
+        <MapContainer center={center} zoom={11} style={{ height: '100%', width: '100%', zIndex: 1 }} zoomControl={false}>
           <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
           <ZoomControl position="bottomright" />
           <MapUpdater center={center} />
