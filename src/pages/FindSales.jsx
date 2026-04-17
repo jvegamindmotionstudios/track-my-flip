@@ -437,8 +437,13 @@ export default function FindSales() {
                           <X size={24} />
                       </button>
                   </div>
-                  {/* Live Google Street View */}
-                  <div style={{ flex: 1, backgroundImage: `url(https://maps.googleapis.com/maps/api/streetview?size=600x400&location=${viewedStreet.lat},${viewedStreet.lng}&key=AIzaSyCVsM2GImLM8w9UK1C1GtEMbR8GWOLyNZE)`, backgroundSize: 'cover', backgroundPosition: 'center', borderRadius: '8px', position: 'relative' }}>
+                  {/* Live Google Street View (Secured via Vercel Environment Variables) */}
+                  <div style={{ flex: 1, backgroundImage: import.meta.env.VITE_GOOGLE_MAPS_KEY ? `url(https://maps.googleapis.com/maps/api/streetview?size=600x400&location=${viewedStreet.lat},${viewedStreet.lng}&key=${import.meta.env.VITE_GOOGLE_MAPS_KEY})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center', borderRadius: '8px', position: 'relative' }}>
+                      {!import.meta.env.VITE_GOOGLE_MAPS_KEY && (
+                         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.8)', color: 'white', padding: '1rem', textAlign: 'center', borderRadius: '8px' }}>
+                             <p>API Key Secured.<br/>Please add <strong>VITE_GOOGLE_MAPS_KEY</strong> to your Vercel Environment Variables.</p>
+                         </div>
+                      )}
                   </div>
               </div>
           </div>
