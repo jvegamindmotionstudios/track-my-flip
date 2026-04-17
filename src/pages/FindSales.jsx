@@ -72,9 +72,9 @@ const AVAILABLE_SOURCES = ["Yard Sales", "Estate Sales", "Thrift Stores", "Aucti
 const createPinIcon = (type, highlighted) => {
   let color = '#3b82f6'; // default
   if (type === 'Thrift Store' || type === 'Flea Market' || type === 'Antique/Auction') color = '#f59e0b'; // Permanent businesses
-  if (type === 'Yard Sale' || type === 'Estate Sale') color = '#ef4444'; // Yard Sales
+  if (type === 'Yard Sale' || type === 'Estate Sale') color = '#22c55e'; // Yard Sales (Green)
 
-  if (highlighted) color = '#10b981';
+  if (highlighted) color = '#8b5cf6'; // Highlighted is now purple so it doesn't clash with green
 
   const size = highlighted ? 36 : 28;
   return L.divIcon({
@@ -85,7 +85,7 @@ const createPinIcon = (type, highlighted) => {
       height: ${size}px; 
       border-radius: 50%;
       border: 3px solid #fff;
-      box-shadow: ${highlighted ? '0 0 15px #10b981, 0 0 30px #10b981' : '0 4px 10px rgba(0,0,0,0.5)'};
+      box-shadow: ${highlighted ? '0 0 15px #8b5cf6, 0 0 30px #8b5cf6' : '0 4px 10px rgba(0,0,0,0.5)'};
       transition: all 0.3s ease;
       display: flex;
       align-items: center;
@@ -368,7 +368,7 @@ export default function FindSales() {
              <Crosshair size={18} style={{marginRight: '6px'}} /> Find My Location
           </button>
           <button onClick={scanArea} className="btn btn-primary" style={{ flex: 2 }}>
-              {isLocating ? 'Scanning Regions...' : 'Scan Map'}
+              {isLocating ? 'Searching Regional Networks...' : 'Scan Map'}
           </button>
         </div>
       </div>
@@ -398,8 +398,8 @@ export default function FindSales() {
                 <Popup className="dark-popup">
                   <div style={{ minWidth: '180px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                      <h4 style={{ margin: 0, color: sale.source === 'osm' ? '#f59e0b' : '#ef4444' }}>{sale.type}</h4>
-                      {sale.source === 'osm' ? <Store size={14} color="#f59e0b" /> : <Home size={14} color="#ef4444" />}
+                      <h4 style={{ margin: 0, color: sale.source === 'osm' ? '#f59e0b' : '#22c55e' }}>{sale.type}</h4>
+                      {sale.source === 'osm' ? <Store size={14} color="#f59e0b" /> : <Home size={14} color="#22c55e" />}
                     </div>
                     <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', color: '#555' }}>
                        {sale.address || 'Reported Location'}
@@ -439,12 +439,27 @@ export default function FindSales() {
                       </button>
                   </div>
                   {/* Live Google Street View (Secured via Vercel Environment Variables) */}
-                  <div style={{ flex: 1, backgroundImage: import.meta.env.VITE_GOOGLE_MAPS_KEY ? `url(https://maps.googleapis.com/maps/api/streetview?size=600x400&location=${viewedStreet.lat},${viewedStreet.lng}&key=${import.meta.env.VITE_GOOGLE_MAPS_KEY})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center', borderRadius: '8px', position: 'relative' }}>
-                      {!import.meta.env.VITE_GOOGLE_MAPS_KEY && (
-                         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.8)', color: 'white', padding: '1rem', textAlign: 'center', borderRadius: '8px' }}>
-                             <p>API Key Secured.<br/>Please add <strong>VITE_GOOGLE_MAPS_KEY</strong> to your Vercel Environment Variables.</p>
-                         </div>
+                  <div style={{ flex: 1, background: '#1f2937', borderRadius: '8px', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                      {import.meta.env.VITE_GOOGLE_MAPS_KEY ? (
+                          <img 
+                              src={`https://maps.googleapis.com/maps/api/streetview?size=600x400&location=${viewedStreet.lat},${viewedStreet.lng}&source=outdoor&radius=1000&return_error_code=true&fov=100&key=${import.meta.env.VITE_GOOGLE_MAPS_KEY}`}
+                              alt="Street View"
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              onError={(e) => {
+                                  e.target.style.display = 'none';
+                                  e.target.nextSibling.style.display = 'flex';
+                              }}
+                          />
+                      ) : (
+                          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.8)', color: 'white', padding: '1rem', textAlign: 'center' }}>
+                              <p>API Key Secured.<br/>Please add <strong>VITE_GOOGLE_MAPS_KEY</strong> to your Vercel Config.</p>
+                          </div>
                       )}
+                      {/* Fallback for when return_error_code=true causes a 404 (No imagery found within 1km) */}
+                      <div style={{ display: 'none', position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center', color: '#9ca3af', textAlign: 'center', padding: '2rem', flexDirection: 'column', gap: '0.5rem' }}>
+                         <span style={{ fontSize: '2rem' }}>🏘️</span>
+                         <p style={{ margin: 0 }}>No local street photography found for this region.</p>
+                      </div>
                   </div>
               </div>
           </div>
