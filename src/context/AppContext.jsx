@@ -278,6 +278,15 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  const deleteInventoryItem = async (id) => {
+    if (window.confirm("Permanently delete this item from your inventory?")) {
+       setInventory(prev => prev.filter(item => item.id !== id));
+       if (user && isSupabaseConfigured) {
+         await supabase.from('inventory').delete().eq('id', id);
+       }
+    }
+  };
+
   const updateInventoryItem = async (id, updates) => {
     setInventory(inventory.map(item => item.id === id ? { ...item, ...updates } : item));
     
@@ -341,15 +350,18 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  const resetDay = () => {
-    if (window.confirm("Are you sure you want to completely reset for a new day? Local data will clear.")) {
-       setInventory([]);
+  const resetDay = async () => {
+    if (window.confirm("Start a Fresh Sourcing Day? This will permanently clear your mapped route stops and vehicle mileage logs from the cloud. (Your inventory will remain securely intact).")) {
        setStops([]);
        setTrackedDrives([]);
        setMileage(0);
        setStartOdo('');
        setEndOdo('');
-       setBudget(200);
+       
+       if (user && isSupabaseConfigured) {
+          await supabase.from('stops').delete().eq('user_id', user.id);
+          await supabase.from('tracked_drives').delete().eq('user_id', user.id);
+       }
     }
   };
 
@@ -378,7 +390,7 @@ export const AppProvider = ({ children }) => {
   return (
     <AppContext.Provider value={{ 
       budget, setBudget, 
-      inventory, addInventoryItem, updateInventoryItem,
+      inventory, addInventoryItem, updateInventoryItem, deleteInventoryItem,
       spent, revenue, fees,
       stops, addStop, updateStopStatus,
       mileage, setMileage,

@@ -1,7 +1,8 @@
-import React, { useState, useRef } from 'react';
-import { Search, Sparkles, Camera, Maximize, ExternalLink, Image as ImageIcon, Loader2 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Search, Sparkles, Camera, Maximize, ExternalLink, Image as ImageIcon, Loader2, Barcode } from 'lucide-react';
 import ProfitCalculator from './ProfitCalculator';
 import { supabase } from '../config/supabaseClient';
+import { Html5Qrcode } from 'html5-qrcode';
 
 export default function PriceEstimator() {
   const [activeTab, setActiveTab] = useState('estimator'); // 'estimator' or 'calculator'
@@ -10,7 +11,43 @@ export default function PriceEstimator() {
   const [hasResult, setHasResult] = useState(false);
   const [estimationQuery, setEstimationQuery] = useState('');
   const [estimateData, setEstimateData] = useState(null);
+  const [isScanning, setIsScanning] = useState(false);
   const cameraRef = useRef(null);
+
+  useEffect(() => {
+    let html5QrCode;
+    if (isScanning) {
+      setTimeout(() => {
+          html5QrCode = new Html5Qrcode("reader");
+          html5QrCode.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: { width: 250, height: 100 } },
+            (decodedText) => {
+              // Success
+              if (html5QrCode.isScanning) {
+                  html5QrCode.stop().then(() => html5QrCode.clear()).catch(console.error);
+              }
+              setIsScanning(false);
+              setQuery(decodedText);
+              triggerEstimate(decodedText);
+            },
+            (errorMessage) => {
+              // parse error, ignore frame failures
+            }
+          ).catch(err => {
+             console.error("Camera error", err);
+             alert("Could not start barcode scanner. Please ensure camera permissions are granted.");
+             setIsScanning(false);
+          });
+      }, 100);
+    }
+
+    return () => {
+      if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().then(() => html5QrCode.clear()).catch(console.error);
+      }
+    };
+  }, [isScanning]);
 
   const triggerEstimate = async (searchQuery = query) => {
     if (!searchQuery) return;
@@ -128,50 +165,78 @@ export default function PriceEstimator() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {/* Massive Visual Search Lead Action */}
-            <div 
-              onClick={(e) => {
-                if (isEstimating) e.preventDefault();
-                else cameraRef.current.click();
-              }}
-              style={{
-                background: 'linear-gradient(135deg, var(--accent-color) 0%, #a78bfa 100%)',
-                borderRadius: '16px',
-                padding: '2rem 1.5rem',
-                color: '#fff',
-                textAlign: 'center',
-                cursor: isEstimating ? 'wait' : 'pointer',
-                boxShadow: '0 8px 30px var(--accent-glow)',
-                position: 'relative',
-                overflow: 'hidden',
-                transition: 'transform 0.2s',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '0.75rem',
-                ...(isEstimating ? { opacity: 0.8, transform: 'scale(0.98)' } : {})
-              }}
-            >
-              <input type="file" ref={cameraRef} accept="image/*" capture="environment" style={{display: 'none'}} onChange={handleNativeEstimationCapture} disabled={isEstimating} />
-              
-              {isEstimating && estimationQuery === 'Visual Item Photo' ? (
-                <>
-                  <Loader2 size={48} style={{ animation: 'spin 1s linear infinite' }} />
-                  <div>
-                    <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.25rem', fontWeight: 700 }}>Processing Image...</h3>
-                    <p style={{ margin: 0, fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)' }}>Matching pixels against live eBay listings</p>
+            {isScanning ? (
+              <div className="card glass" style={{ padding: '1rem', border: '2px solid var(--accent-color)', animation: 'fadeIn 0.3s' }}>
+                 <div className="flex-between" style={{ marginBottom: '1rem' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Barcode size={20} /> Scanning UPC...</h3>
+                    <button className="btn" onClick={() => setIsScanning(false)} style={{ background: 'var(--danger-color)', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '8px' }}>Cancel</button>
+                 </div>
+                 <div id="reader" style={{ width: '100%', borderRadius: '8px', overflow: 'hidden' }}></div>
+              </div>
+            ) : (
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <div 
+                    onClick={(e) => {
+                      if (isEstimating) e.preventDefault();
+                      else cameraRef.current.click();
+                    }}
+                    style={{
+                      flex: 1,
+                      background: 'linear-gradient(135deg, var(--accent-color) 0%, #a78bfa 100%)',
+                      borderRadius: '16px',
+                      padding: '1.5rem 1rem',
+                      color: '#fff',
+                      textAlign: 'center',
+                      cursor: isEstimating ? 'wait' : 'pointer',
+                      boxShadow: '0 8px 30px var(--accent-glow)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      ...(isEstimating ? { opacity: 0.8, transform: 'scale(0.98)' } : {})
+                    }}
+                  >
+                    <input type="file" ref={cameraRef} accept="image/*" capture="environment" style={{display: 'none'}} onChange={handleNativeEstimationCapture} disabled={isEstimating} />
+                    
+                    {isEstimating && estimationQuery === 'Visual Item Photo' ? (
+                      <Loader2 size={36} style={{ animation: 'spin 1s linear infinite' }} />
+                    ) : (
+                      <Camera size={36} />
+                    )}
+                    <div>
+                      <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.1rem', fontWeight: 700 }}>AI Photo</h3>
+                      <p style={{ margin: 0, fontSize: '0.75rem', color: 'rgba(255,255,255,0.8)' }}>Identify items</p>
+                    </div>
                   </div>
-                </>
-              ) : (
-                <>
-                  <Camera size={48} />
-                  <div>
-                    <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.25rem', fontWeight: 700 }}>Tap to Identify</h3>
-                    <p style={{ margin: 0, fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)' }}>Snap a photo to automatically pull back value</p>
+
+                  <div 
+                    onClick={(e) => {
+                      if (!isEstimating) setIsScanning(true);
+                    }}
+                    style={{
+                      flex: 1,
+                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                      borderRadius: '16px',
+                      padding: '1.5rem 1rem',
+                      color: '#fff',
+                      textAlign: 'center',
+                      cursor: isEstimating ? 'wait' : 'pointer',
+                      boxShadow: '0 8px 30px rgba(16, 185, 129, 0.4)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      ...(isEstimating ? { opacity: 0.8, transform: 'scale(0.98)' } : {})
+                    }}
+                  >
+                    <Barcode size={36} />
+                    <div>
+                      <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.1rem', fontWeight: 700 }}>Scan UPC</h3>
+                      <p style={{ margin: 0, fontSize: '0.75rem', color: 'rgba(255,255,255,0.8)' }}>Exact matches</p>
+                    </div>
                   </div>
-                </>
-              )}
-            </div>
+                </div>
+            )}
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', color: 'var(--text-secondary)' }}>
                <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }}></div>
@@ -191,11 +256,11 @@ export default function PriceEstimator() {
                     placeholder="e.g. Sony Walkman"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    disabled={isEstimating}
+                    disabled={isEstimating || isScanning}
                   />
                   <button 
                     type="submit" 
-                    disabled={isEstimating || !query}
+                    disabled={isEstimating || !query || isScanning}
                     style={{ position: 'absolute', right: '0.5rem', background: query ? 'var(--accent-color)' : 'var(--bg-color)', border: 'none', color: query ? '#fff' : 'var(--text-secondary)', padding: '0.5rem 1rem', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', opacity: isEstimating ? 0.7 : 1 }}
                   >
                     {isEstimating && estimationQuery !== 'Visual Item Photo' ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : 'Comp'}

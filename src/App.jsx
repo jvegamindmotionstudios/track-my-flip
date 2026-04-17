@@ -158,7 +158,8 @@ function MainInterface({ session }) {
                <strong>www.mindmotionstudios.com L.L.C.</strong><br/>
                4539 N. 22nd St. Suite N<br/>
                Phoenix, AZ 85016<br/>
-               jvega@mindmotionstudios.com
+               jvega@mindmotionstudios.com<br/><br/>
+               <span style={{ fontWeight: 'bold', color: 'var(--accent-color)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Made by resellers, for resellers 🤍</span>
             </div>
 
             <label style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', cursor: 'pointer', background: 'rgba(16, 185, 129, 0.05)', padding: '1rem', borderRadius: '8px', border: hasAgreedToS ? '1px solid rgba(16, 185, 129, 0.5)' : '1px solid var(--border-color)', transition: 'all 0.2s', marginTop: '0.5rem' }}>

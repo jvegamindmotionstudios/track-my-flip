@@ -68,9 +68,14 @@ function Auth({ onAuthSuccess }) {
           <h1 style={{ margin: '0 0 0.5rem 0', fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.5px' }}>
             <span style={{ color: '#0f3a8b' }}>Track My </span><span style={{ color: '#3f9b0b' }}>Flip</span>
           </h1>
-          <p style={{ margin: '0 0 2rem 0', color: 'var(--text-secondary)', fontWeight: '500' }}>
+          <p style={{ margin: '0 0 1.5rem 0', color: 'var(--text-secondary)', fontWeight: '500' }}>
             {isLogin ? 'Welcome back! Log in to access your data.' : 'Create an account to save your routes and inventory in the cloud.'}
           </p>
+          <div style={{ display: 'inline-block', background: 'var(--accent-color-transparent)', padding: '0.4rem 1rem', borderRadius: '16px', marginBottom: '2rem' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--accent-color)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Made by resellers, for resellers 🤍
+            </span>
+          </div>
         </div>
 
         {errorMsg && (

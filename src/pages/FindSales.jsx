@@ -135,7 +135,16 @@ export default function FindSales() {
       setShowSearchHere(false);
       setIsLocating(true);
       setCenter(scrolledLocation);
-      await executeLiveSearch(scrolledLocation[0], scrolledLocation[1]);
+      
+      try {
+         const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${scrolledLocation[0]}&lon=${scrolledLocation[1]}`);
+         const geoData = await geoRes.json();
+         const city = geoData?.address?.city || geoData?.address?.town || geoData?.address?.county || 'sfbay';
+         await executeLiveSearch(scrolledLocation[0], scrolledLocation[1], city);
+      } catch(e) {
+         await executeLiveSearch(scrolledLocation[0], scrolledLocation[1], 'sfbay');
+      }
+      
       setIsLocating(false);
   };
   
@@ -181,7 +190,7 @@ export default function FindSales() {
     }
   };
 
-  const executeLiveSearch = async (lat, lng) => {
+  const executeLiveSearch = async (lat, lng, cityName = 'sfbay') => {
       // 1. Fetch Permanent Businesses (OSM)
       const osmResults = await fetchOverpassData(lat, lng);
 
@@ -190,7 +199,7 @@ export default function FindSales() {
       try {
          if (activeSources.includes('Yard Sales') || activeSources.includes('Estate Sales')) {
              const { data, error } = await supabase.functions.invoke('find-sales', {
-                 body: { lat, lng, radius: 25 } // 25 mile search distance
+                 body: { lat, lng, radius: 25, city: cityName } // 25 mile search distance
              });
              
              if (data && data.sales) {
@@ -218,13 +227,20 @@ export default function FindSales() {
 
     if (locationQuery.trim()) {
         try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationQuery)}`);
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationQuery)}&countrycodes=us`);
             const data = await res.json();
             if (data && data.length > 0) {
                 const lat = parseFloat(data[0].lat);
                 const lng = parseFloat(data[0].lon);
+                
+                let foundCity = 'sfbay'; // default
+                if (data[0].display_name) {
+                    // Extract city name from CSV string (e.g., "Los Angeles, California...")
+                    foundCity = data[0].display_name.split(',')[0].trim();
+                }
+                
                 setCenter([lat, lng]);
-                await executeLiveSearch(lat, lng);
+                await executeLiveSearch(lat, lng, foundCity);
             } else {
                 alert("Location not found. Please try a different City or Zip Code.");
             }
@@ -242,17 +258,26 @@ export default function FindSales() {
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
           setCenter([lat, lng]);
-          await executeLiveSearch(lat, lng);
+          
+          try {
+             const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+             const geoData = await geoRes.json();
+             const city = geoData?.address?.city || geoData?.address?.town || geoData?.address?.county || 'sfbay';
+             await executeLiveSearch(lat, lng, city);
+          } catch(e) {
+             await executeLiveSearch(lat, lng, 'sfbay');
+          }
+          
           setIsLocating(false);
         },
         async () => {
-          await executeLiveSearch(center[0], center[1]);
+          await executeLiveSearch(center[0], center[1], 'sfbay');
           setIsLocating(false);
         },
         { timeout: 3000, enableHighAccuracy: true }
       );
     } else {
-      await executeLiveSearch(center[0], center[1]);
+      await executeLiveSearch(center[0], center[1], 'sfbay');
       setIsLocating(false);
     }
   };
@@ -412,8 +437,8 @@ export default function FindSales() {
                           <X size={24} />
                       </button>
                   </div>
-                  {/* Notice: A real API key would replace this mock static visual */}
-                  <div style={{ flex: 1, backgroundImage: 'url(https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=600&q=80)', backgroundSize: 'cover', backgroundPosition: 'center', borderRadius: '8px' }}>
+                  {/* Live Google Street View */}
+                  <div style={{ flex: 1, backgroundImage: `url(https://maps.googleapis.com/maps/api/streetview?size=600x400&location=${viewedStreet.lat},${viewedStreet.lng}&key=AIzaSyCVsM2GImLM8w9UK1C1GtEMbR8GWOLyNZE)`, backgroundSize: 'cover', backgroundPosition: 'center', borderRadius: '8px', position: 'relative' }}>
                   </div>
               </div>
           </div>

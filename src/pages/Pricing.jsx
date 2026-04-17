@@ -148,6 +148,18 @@ const Pricing = ({ onClose, onSubscribeClick }) => {
         </div>
 
       </div>
+
+      {/* App Store Mandated Legal Disclaimer */}
+      <div style={{ marginTop: '2rem', padding: '1.5rem', background: 'rgba(0,0,0,0.02)', borderRadius: '12px', border: '1px solid var(--border-color)', maxWidth: '800px', width: '100%', fontSize: '0.65rem', color: 'var(--text-secondary)', lineHeight: '1.5', textAlign: 'justify' }}>
+         <p style={{ margin: '0 0 0.5rem 0' }}><strong>Subscription Terms:</strong></p>
+         <p style={{ margin: 0 }}>
+           Payment will be charged to your Apple ID account at the confirmation of purchase. Subscription automatically renews unless it is canceled at least 24 hours before the end of the current period. Your account will be charged {billingCycle === 'monthly' ? '$8.99' : '$59.99'} for renewal within 24 hours prior to the end of the current period. You can manage and cancel your subscriptions by going to your account settings on the App Store after purchase. Any unused portion of a free trial period, if offered, will be forfeited when you purchase a subscription.
+         </p>
+         <div style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem', marginTop: '1rem' }}>
+             <a href="/terms.html" target="_blank" style={{ color: 'var(--text-secondary)', fontWeight: 'bold' }}>Terms of Service</a>
+             <a href="/privacy.html" target="_blank" style={{ color: 'var(--text-secondary)', fontWeight: 'bold' }}>Privacy Policy</a>
+         </div>
+      </div>
     </div>
   );
 };

@@ -4,7 +4,7 @@ import Tesseract from 'tesseract.js';
 import { useAppContext } from '../context/AppContext';
 
 export default function InventoryManager() {
-  const { isPro, isTrialing, inventory, addInventoryItem, updateInventoryItem, stops, budget, setBudget, spent, revenue, fees, resetDay } = useAppContext();
+  const { isPro, isTrialing, inventory, addInventoryItem, updateInventoryItem, deleteInventoryItem, stops, budget, setBudget, spent, revenue, fees, resetDay } = useAppContext();
   const [isAdding, setIsAdding] = useState(false);
   const [activeItem, setActiveItem] = useState(null);
   const [soldPrice, setSoldPrice] = useState('');
@@ -306,6 +306,15 @@ export default function InventoryManager() {
           </div>
           <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem', background: 'var(--success-color)' }}>
             Confirm Sale
+          </button>
+          
+          <button 
+             type="button" 
+             onClick={() => { deleteInventoryItem(activeItem.id); setActiveItem(null); }} 
+             className="btn"
+             style={{ width: '100%', marginTop: '0.75rem', background: 'rgba(239, 68, 68, 0.05)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '1rem', borderRadius: '12px', fontWeight: 'bold' }}
+          >
+            Delete Item Record
           </button>
         </form>
       </div>
