@@ -297,6 +297,7 @@ export default function FindSales() {
     
     // Visually remove routed items from map
     setSales(sales.filter(s => s.id !== sale.id));
+    alert(`Stop Added! ${sale.address || 'The location'} has been queued in your Route tab.`);
   };
   
   const useCurrentLocation = () => {
