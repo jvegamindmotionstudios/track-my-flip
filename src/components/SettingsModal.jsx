@@ -113,13 +113,16 @@ function SettingsModal({ onClose }) {
                         if (isSupabaseConfigured) {
                             const userInfo = await supabase.auth.getUser();
                             if (userInfo?.data?.user?.id) {
-                                await supabase.from('inventory').delete().eq('user_id', userInfo.data.user.id);
-                                await supabase.from('tracked_drives').delete().eq('user_id', userInfo.data.user.id);
-                                await supabase.from('user_profiles').delete().eq('user_id', userInfo.data.user.id);
+                                const { data, error } = await supabase.functions.invoke('delete-account');
+                                
+                                if (error) {
+                                    alert(`Deletion request failed. Please contact support. Error: ${error.message}`);
+                                    return;
+                                }
                             }
                             localStorage.clear();
                             await supabase.auth.signOut();
-                            alert("Account deletion initiated and user data scrubbed. You will now be logged out.");
+                            alert("Your account & data have been permanently deleted.");
                             window.location.reload();
                         }
                     }

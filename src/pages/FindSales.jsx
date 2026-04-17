@@ -1,9 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Map as MapIcon, Crosshair, X, Store, Home } from 'lucide-react';
+import { Search, Map as MapIcon, Crosshair, X, Store, Home, Loader2 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents, ZoomControl } from 'react-leaflet';
 import L from 'leaflet';
 import { useAppContext } from '../context/AppContext';
 import { supabase } from '../config/supabaseClient';
+
+const UNIFIED_COLORS = {
+  'Yard Sales': '#ef4444',     // Red
+  'Estate Sales': '#3b82f6',   // Blue
+  'Thrift Stores': '#f59e0b',  // Orange
+  'Flea Markets': '#14b8a6',   // Teal
+  'Antique/Auctions': '#8b5cf6',// Purple
+  'Yard Sale': '#ef4444',
+  'Estate Sale': '#3b82f6',
+  'Thrift Store': '#f59e0b',
+  'Flea Market': '#14b8a6',
+  'Antique/Auction': '#8b5cf6',
+  'Highlighted': '#ec4899',    // Pink highlight
+  'Fallback': '#6b7280'        // Gray
+};
 
 // Simple component to update map center dynamically
 function MapUpdater({ center }) {
@@ -70,11 +85,8 @@ function LiveLocationMarker() {
 const AVAILABLE_SOURCES = ["Yard Sales", "Estate Sales", "Thrift Stores", "Auctions", "Flea Markets"];
 
 const createPinIcon = (type, highlighted) => {
-  let color = '#3b82f6'; // default
-  if (type === 'Thrift Store' || type === 'Flea Market' || type === 'Antique/Auction') color = '#f59e0b'; // Permanent businesses
-  if (type === 'Yard Sale' || type === 'Estate Sale') color = '#22c55e'; // Yard Sales (Green)
-
-  if (highlighted) color = '#8b5cf6'; // Highlighted is now purple so it doesn't clash with green
+  let color = UNIFIED_COLORS[type] || UNIFIED_COLORS['Fallback'];
+  if (highlighted) color = UNIFIED_COLORS['Highlighted'];
 
   const size = highlighted ? 36 : 28;
   return L.divIcon({
@@ -85,7 +97,7 @@ const createPinIcon = (type, highlighted) => {
       height: ${size}px; 
       border-radius: 50%;
       border: 3px solid #fff;
-      box-shadow: ${highlighted ? '0 0 15px #8b5cf6, 0 0 30px #8b5cf6' : '0 4px 10px rgba(0,0,0,0.5)'};
+      box-shadow: ${highlighted ? `0 0 15px ${Math.round(0.6*255).toString(16)}00, 0 0 30px ${color}` : '0 4px 10px rgba(0,0,0,0.5)'};
       transition: all 0.3s ease;
       display: flex;
       align-items: center;
@@ -106,7 +118,6 @@ export default function FindSales() {
   const [keyword, setKeyword] = useState('');
   const [locationQuery, setLocationQuery] = useState('');
   const [isLocating, setIsLocating] = useState(false);
-  const [viewedStreet, setViewedStreet] = useState(null);
   const [activeSources, setActiveSources] = useState([...AVAILABLE_SOURCES]);
   
   const [showSearchHere, setShowSearchHere] = useState(false);
@@ -206,7 +217,7 @@ export default function FindSales() {
                  activeYardSales = data.sales.map(s => ({
                      ...s,
                      type: s.title.toLowerCase().includes('estate') ? 'Estate Sale' : 'Yard Sale',
-                     address: s.title, // Craigslist titles often have the city or street
+                     address: s.address || s.title, // Proxy returns address or we fallback to title
                      items: s.description || 'Assorted Items',
                      time: 'Active Listing',
                      source: 'edge'
@@ -352,9 +363,9 @@ export default function FindSales() {
                 fontSize: '0.75rem',
                 whiteSpace: 'nowrap',
                 fontWeight: 600,
-                border: activeSources.includes(source) ? '1px solid var(--accent-color)' : '1px solid rgba(0,0,0,0.06)',
-                background: activeSources.includes(source) ? 'rgba(139, 92, 246, 0.2)' : 'rgba(0,0,0,0.03)',
-                color: activeSources.includes(source) ? 'var(--accent-color)' : 'var(--text-secondary)',
+                border: activeSources.includes(source) ? `1px solid ${UNIFIED_COLORS[source]}` : '1px solid rgba(0,0,0,0.06)',
+                background: activeSources.includes(source) ? `${UNIFIED_COLORS[source]}33` : 'rgba(0,0,0,0.03)',
+                color: activeSources.includes(source) ? UNIFIED_COLORS[source] : 'var(--text-secondary)',
                 cursor: 'pointer',
                 transition: 'all 0.2s'
               }}
@@ -367,8 +378,8 @@ export default function FindSales() {
           <button onClick={useCurrentLocation} className="btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
              <Crosshair size={18} style={{marginRight: '6px'}} /> Find My Location
           </button>
-          <button onClick={scanArea} className="btn btn-primary" style={{ flex: 2 }}>
-              {isLocating ? 'Searching Regional Networks...' : 'Scan Map'}
+          <button onClick={scanArea} className="btn btn-primary" style={{ flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+              {isLocating ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> Searching Regional Networks...</> : 'Scan Map'}
           </button>
         </div>
       </div>
@@ -398,19 +409,15 @@ export default function FindSales() {
                 <Popup className="dark-popup">
                   <div style={{ minWidth: '180px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                      <h4 style={{ margin: 0, color: sale.source === 'osm' ? '#f59e0b' : '#22c55e' }}>{sale.type}</h4>
-                      {sale.source === 'osm' ? <Store size={14} color="#f59e0b" /> : <Home size={14} color="#22c55e" />}
+                      <h4 style={{ margin: 0, color: UNIFIED_COLORS[sale.type] || UNIFIED_COLORS['Fallback'] }}>{sale.type}</h4>
+                      {['Thrift Store', 'Flea Market', 'Antique/Auction'].includes(sale.type) ? <Store size={14} color={UNIFIED_COLORS[sale.type] || UNIFIED_COLORS['Fallback']} /> : <Home size={14} color={UNIFIED_COLORS[sale.type] || UNIFIED_COLORS['Fallback']} />}
                     </div>
                     <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', color: '#555' }}>
                        {sale.address || 'Reported Location'}
                        <br/><span style={{ fontSize: '0.65rem' }}>{sale.time}</span>
                     </p>
-                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', fontWeight: 'bold', color: isHighlighted ? '#10b981' : '#000' }}>{sale.items}</p>
+                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', fontWeight: 'bold', color: isHighlighted ? UNIFIED_COLORS['Highlighted'] : '#000' }}>{sale.items}</p>
                     
-                    <button className="btn" style={{ width: '100%', marginBottom: '0.5rem', background: '#e5e7eb', color: '#374151', padding: '0.25rem', fontSize: '0.75rem' }} onClick={() => setViewedStreet(sale)}>
-                        👁️ Glance Street View
-                    </button>
-
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                         <button className="btn" onClick={() => handleAddStop(sale, 'high')} style={{ background: '#ef4444', color: 'var(--text-inverse)', fontSize: '0.75rem', padding: '0.5rem' }}>🔥 Route Immediately</button>
                         <button className="btn" onClick={() => handleAddStop(sale, 'standard')} style={{ background: '#3b82f6', color: 'var(--text-inverse)', fontSize: '0.75rem', padding: '0.5rem' }}>📌 Save Stop</button>
@@ -428,42 +435,6 @@ export default function FindSales() {
              </div>
         )}
       </div>
-
-      {viewedStreet && (
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', animation: 'fadeIn 0.2s ease-out' }} onClick={() => setViewedStreet(null)}>
-              <div className="card glass" style={{ width: '100%', height: '50%', display: 'flex', flexDirection: 'column', padding: '1rem', background: 'var(--bg-card)', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
-                  <div className="flex-between" style={{ marginBottom: '1rem' }}>
-                      <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>Street View Glance</h3>
-                      <button onClick={() => setViewedStreet(null)} style={{ background: 'rgba(0,0,0,0.1)', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', padding: '0.4rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <X size={24} />
-                      </button>
-                  </div>
-                  {/* Live Google Street View (Secured via Vercel Environment Variables) */}
-                  <div style={{ flex: 1, background: '#1f2937', borderRadius: '8px', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                      {import.meta.env.VITE_GOOGLE_MAPS_KEY ? (
-                          <img 
-                              src={`https://maps.googleapis.com/maps/api/streetview?size=600x400&location=${viewedStreet.lat},${viewedStreet.lng}&source=outdoor&radius=1000&return_error_code=true&fov=100&key=${import.meta.env.VITE_GOOGLE_MAPS_KEY}`}
-                              alt="Street View"
-                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                              onError={(e) => {
-                                  e.target.style.display = 'none';
-                                  e.target.nextSibling.style.display = 'flex';
-                              }}
-                          />
-                      ) : (
-                          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.8)', color: 'white', padding: '1rem', textAlign: 'center' }}>
-                              <p>API Key Secured.<br/>Please add <strong>VITE_GOOGLE_MAPS_KEY</strong> to your Vercel Config.</p>
-                          </div>
-                      )}
-                      {/* Fallback for when return_error_code=true causes a 404 (No imagery found within 1km) */}
-                      <div style={{ display: 'none', position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center', color: '#9ca3af', textAlign: 'center', padding: '2rem', flexDirection: 'column', gap: '0.5rem' }}>
-                         <span style={{ fontSize: '2rem' }}>🏘️</span>
-                         <p style={{ margin: 0 }}>No local street photography found for this region.</p>
-                      </div>
-                  </div>
-              </div>
-          </div>
-      )}
 
     </div>
   );
