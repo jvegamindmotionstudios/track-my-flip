@@ -104,8 +104,11 @@ export const AppProvider = ({ children }) => {
           .eq('user_id', session.user.id)
           .single();
           
+        // Master Tester Bypass
+        const isMasterTester = session.user.email === 'jorgesvideo@gmail.com';
+
         if (profileData) {
-          const isUserPro = profileData.is_pro === true;
+          const isUserPro = isMasterTester || profileData.is_pro === true;
           setIsPro(isUserPro);
           setIsTrialing(!isUserPro && trialActive);
           setTrialDaysLeft(trialActive ? remainingTrialDays : 0);
@@ -117,8 +120,8 @@ export const AppProvider = ({ children }) => {
             email: profileData.email || ''
           });
         } else {
-          setIsPro(false);
-          setIsTrialing(trialActive);
+          setIsPro(isMasterTester);
+          setIsTrialing(!isMasterTester && trialActive);
           setTrialDaysLeft(trialActive ? remainingTrialDays : 0);
         }
 
