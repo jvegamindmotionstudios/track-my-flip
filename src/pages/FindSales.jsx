@@ -209,22 +209,22 @@ export default function FindSales() {
       let activeYardSales = [];
       try {
          if (activeSources.includes('Yard Sales') || activeSources.includes('Estate Sales')) {
-             const { data, error } = await supabase.functions.invoke('find-sales', {
-                 body: { lat, lng, radius: 25, city: cityName } // 25 mile search distance
-             });
+             const { data, error } = await supabase.from('scraped_sales')
+                 .select('*')
+                 .eq('city', cityName)
+                 .limit(100);
              
-             if (data && data.sales) {
-                 activeYardSales = data.sales.map(s => ({
+             if (data) {
+                 activeYardSales = data.map(s => ({
                      ...s,
                      type: s.title.toLowerCase().includes('estate') ? 'Estate Sale' : 'Yard Sale',
-                     address: s.address || s.title, // Proxy returns address or we fallback to title
+                     address: s.address || s.title, 
                      items: s.description || 'Assorted Items',
                      time: 'Active Listing',
-                     source: 'edge'
+                     source: 'db'
                  }));
              }
-             if (data && data.error) console.error("Proxy Error:", data.error);
-             if (error) console.error("Edge Function Error:", error);
+             if (error) console.error("Scraped Sales Database Error:", error);
          }
       } catch (err) {
          console.error("Failed executing find-sales proxy", err);
@@ -397,13 +397,6 @@ export default function FindSales() {
                  <button onClick={searchThisArea} className="btn" style={{ background: '#fff', color: 'var(--accent-color)', borderRadius: '24px', padding: '0.5rem 1.5rem', fontWeight: 'bold', boxShadow: '0 4px 15px rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Search size={16} /> Search this area
                  </button>
-             </div>
-        )}
-        {isLocating && (
-             <div style={{ position: 'absolute', inset: 0, zIndex: 9999, background: 'rgba(255,255,255,0.7)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(3px)' }}>
-                 <Loader2 size={48} className="text-accent" style={{ animation: 'spin 1s linear infinite', marginBottom: '1rem' }} />
-                 <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>Scanning Active Networks...</h3>
-                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>This can take up to 30 seconds for deep live scrapes.</p>
              </div>
         )}
         <MapContainer center={center} zoom={11} style={{ height: '100%', width: '100%', zIndex: 1 }} zoomControl={false}>
