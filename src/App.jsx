@@ -57,8 +57,9 @@ function MainInterface({ session }) {
             }
         });
 
-        if (error || !data) {
-             throw new Error("Unable to reach Stripe portal. Wait a moment and try again.");
+        if (error || !data || data.error) {
+             const rawError = error?.message || data?.error || "Unknown Edge Function Error";
+             throw new Error(`Unable to reach Stripe portal: ${rawError}. Check your Stripe Secret Key and Price IDs!`);
         }
 
         if (data.url) {
