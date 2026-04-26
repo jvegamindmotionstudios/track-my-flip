@@ -42,14 +42,8 @@ function MainInterface({ session }) {
   const [isProcessingUpgrade, setIsProcessingUpgrade] = useState(false);
 
   const handleSubscribe = async (billingCycle) => {
-    // "Hybrid" Approach Check: Are we in a Web Browser or potentially Native Mobile wrap?
-    // For now we assume Web, but Apple requires disabling external links in WebViews.
-    const isIOSNative = /TrackMyFlipApp-iOS/.test(navigator.userAgent);
-    
-    if (isIOSNative) {
-        alert("In-App Subscriptions are currently disabled on Native iOS. Please visit our website to upgrade.");
-        return;
-    }
+    // Ensure direct passage to Stripe on all platforms
+
 
     try {
         setIsProcessingUpgrade(true);
