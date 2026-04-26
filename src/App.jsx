@@ -13,7 +13,8 @@ import InstallPrompt from './components/InstallPrompt';
 import GlobalDrivePrompt from './components/GlobalDrivePrompt';
 import { AppProvider, useAppContext } from './context/AppContext';
 import { supabase, isSupabaseConfigured } from './config/supabaseClient';
-import { Settings, ShieldCheck, Car, FileText, AlertTriangle } from 'lucide-react';
+import { STRIPE_PRICES } from './config/stripe';
+import { Settings, ShieldCheck, Car, FileText, AlertTriangle, Loader2 } from 'lucide-react';
 
 function MainInterface({ session }) {
   const [currentTab, setCurrentTab] = useState('find');
@@ -38,11 +39,42 @@ function MainInterface({ session }) {
     }
   };
 
-  const handleSubscribe = (billingCycle) => {
-    // App Store Compliance: Apple prohibits external Stripe links for digital upgrades (Guideline 3.1.1).
-    // If you launch on iOS in the future, you must use RevenueCat. For now, to pass review without 
-    // a dead 404 link rejection, we gracefully catch the purchase intent.
-    alert(`Upgrade Processing: Thank you for your interest! In-App Subscriptions are currently being finalized for this platform. Please enjoy the trial in the meantime.`);
+  const [isProcessingUpgrade, setIsProcessingUpgrade] = useState(false);
+
+  const handleSubscribe = async (billingCycle) => {
+    // "Hybrid" Approach Check: Are we in a Web Browser or potentially Native Mobile wrap?
+    // For now we assume Web, but Apple requires disabling external links in WebViews.
+    const isIOSNative = /TrackMyFlipApp-iOS/.test(navigator.userAgent);
+    
+    if (isIOSNative) {
+        alert("In-App Subscriptions are currently disabled on Native iOS. Please visit our website to upgrade.");
+        return;
+    }
+
+    try {
+        setIsProcessingUpgrade(true);
+        const priceId = STRIPE_PRICES[billingCycle];
+        
+        // Invoke Edge Function securely to generate session
+        const { data, error } = await supabase.functions.invoke('create-checkout', {
+            body: { 
+                priceId, 
+                returnUrl: window.location.origin
+            }
+        });
+
+        if (error || !data) {
+             throw new Error("Unable to reach Stripe portal. Wait a moment and try again.");
+        }
+
+        if (data.url) {
+            // Success! Redirect user gracefully to Stripe
+            window.location.href = data.url;
+        }
+    } catch(err) {
+        alert(err.message);
+        setIsProcessingUpgrade(false);
+    }
   };
 
   const renderContent = () => {
@@ -196,6 +228,14 @@ function MainInterface({ session }) {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Loading Overlay when pinging Stripe */}
+      {isProcessingUpgrade && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(4px)', zIndex: 99999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <Loader2 size={48} color="#0f3a8b" style={{ animation: 'spin 1s linear infinite' }} />
+              <h3 style={{ marginTop: '1rem', color: '#0f3a8b' }}>Connecting to Secure Payment Portal...</h3>
+          </div>
       )}
 
       {/* Global Settings Modal */}
