@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { isSupabaseConfigured, supabase } from '../config/supabaseClient';
-import { ShieldCheck, AlertTriangle, User, Lock, Mail, Loader2 } from 'lucide-react';
+import { ShieldCheck, AlertTriangle, User, Lock, Mail, Loader2, Eye, EyeOff } from 'lucide-react';
 
 function Auth({ onAuthSuccess }) {
   const [isLogin, setIsLogin] = useState(true);
@@ -8,6 +8,8 @@ function Auth({ onAuthSuccess }) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   if (!isSupabaseConfigured) {
     return (
@@ -52,6 +54,27 @@ function Auth({ onAuthSuccess }) {
       }
     } catch (error) {
       setErrorMsg(error.message || 'An error occurred during authentication.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!email) {
+      setErrorMsg('Please enter your email address in the field above first.');
+      return;
+    }
+    setLoading(true);
+    setErrorMsg('');
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin,
+      });
+      if (error) throw error;
+      setResetSent(true);
+      alert('Password reset instructions sent to your email!');
+    } catch (error) {
+      setErrorMsg(error.message);
     } finally {
       setLoading(false);
     }
@@ -104,19 +127,37 @@ function Auth({ onAuthSuccess }) {
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Password</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>Password</label>
+              {isLogin && (
+                <button
+                  type="button"
+                  onClick={handleResetPassword}
+                  style={{ background: 'none', border: 'none', color: '#0f3a8b', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                >
+                  Forgot Password?
+                </button>
+              )}
+            </div>
             <div style={{ position: 'relative' }}>
               <div style={{ position: 'absolute', top: '50%', left: '12px', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }}>
                 <Lock size={18} />
               </div>
               <input 
-                type="password" 
+                type={showPassword ? "text" : "password"} 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 placeholder="••••••••"
-                style={{ width: '100%', padding: '0.9rem 1rem 0.9rem 2.5rem', borderRadius: '12px', border: '1px solid var(--border-color)', fontSize: '1rem', backgroundColor: '#f9fafb' }}
+                style={{ width: '100%', padding: '0.9rem 2.5rem 0.9rem 2.5rem', borderRadius: '12px', border: '1px solid var(--border-color)', fontSize: '1rem', backgroundColor: '#f9fafb' }}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{ position: 'absolute', top: '50%', right: '12px', transform: 'translateY(-50%)', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
           </div>
 
